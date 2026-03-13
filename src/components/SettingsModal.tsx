@@ -48,6 +48,7 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
   // State for inline user editing
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUserName, setEditingUserName] = useState('');
+  const [isDeletingUserId, setIsDeletingUserId] = useState<string | null>(null);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -114,6 +115,32 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
       alert('Erro ao atualizar o nome do usuário.');
     }
     setEditingUserId(null);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      if (userId === profile?.id) {
+        alert('Você não pode se excluir.');
+        return;
+      }
+
+      setIsDeletingUserId(userId);
+      // deleting from profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+      
+      setUsersList(prev => prev.filter(u => u.id !== userId));
+      alert('Perfil de usuário excluído com sucesso.');
+    } catch (err: any) {
+      console.error('Erro ao excluir usuário:', err);
+      alert('Erro ao excluir perfil de usuário: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setIsDeletingUserId(null);
+    }
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -567,7 +594,7 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                       Carregando usuários...
                     </div>
                   ) : (
-                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="border border-slate-200 rounded-xl overflow-x-auto">
                       <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
                           <tr>
@@ -616,10 +643,26 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                                         setEditingUserId(user.id);
                                         setEditingUserName(user.full_name || '');
                                       }}
-                                      className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100"
+                                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                                       title="Editar Nome"
                                     >
-                                      <Pencil className="w-3.5 h-3.5" />
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        if (confirm(`Tem certeza que deseja excluir o perfil de ${user.full_name || user.email}?`)) {
+                                          handleDeleteUser(user.id);
+                                        }
+                                      }}
+                                      disabled={user.id === profile?.id || isDeletingUserId === user.id}
+                                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                      title="Excluir Usuário"
+                                    >
+                                      {isDeletingUserId === user.id ? (
+                                        <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <Trash2 className="w-4 h-4" />
+                                      )}
                                     </button>
                                   </div>
                                 )}
@@ -653,7 +696,7 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
               )}
 
 
-              {/* DADOS E BACKUP */}
+
               {activeTab === 'dados' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <div>
