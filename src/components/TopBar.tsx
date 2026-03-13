@@ -16,6 +16,7 @@ interface TopBarProps {
   onImportClick: () => void;
   profile: Profile | null;
   exportData?: ExportOrder[];
+  isOnline: boolean;
 }
 
 export function TopBar({ 
@@ -28,6 +29,7 @@ export function TopBar({
   onImportClick,
   profile,
   exportData,
+  isOnline,
 }: TopBarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
@@ -237,7 +239,15 @@ export function TopBar({
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2">
               <div className="px-4 py-3 border-b border-slate-700 mb-1">
-                <p className="text-sm font-bold text-white capitalize">{profile?.full_name || (isAdmin ? 'Administrador' : 'Usuário Padrão')}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-white capitalize">{profile?.full_name || (isAdmin ? 'Administrador' : 'Usuário Padrão')}</p>
+                  <div 
+                    className={`w-2.5 h-2.5 rounded-full border border-slate-900 shadow-sm transition-all duration-500 ${
+                      isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                    }`}
+                    title={isOnline ? 'Banco Online' : 'Banco Offline'}
+                  />
+                </div>
                 <p className="text-xs text-slate-400 truncate" title={profile?.email}>{profile?.email || 'Carregando...'}</p>
               </div>
               

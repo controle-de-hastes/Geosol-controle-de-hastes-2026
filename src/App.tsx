@@ -18,6 +18,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
   const [data, setData] = useState<Order[]>([]);
   const [history, setHistory] = useState<HistoryEvent[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'Geral'>('Geral');
@@ -178,6 +179,44 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Monitor Connection & Realtime Sync
+  useEffect(() => {
+    // 1. Monitor Online/Offline status
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // 2. Realtime Subscription for 'orders' table
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+        },
+        (payload) => {
+          console.log('Change received!', payload);
+          // Re-fetch everything to ensure consistency across all local counts and derived fields
+          fetchOrders();
+          fetchHistory();
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime connected!');
+        }
+      });
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Compute derived fields (qtdPendente, status)
@@ -444,6 +483,7 @@ export default function App() {
           onImportClick={() => setIsImportModalOpen(true)}
           profile={profile}
           exportData={filteredData}
+          isOnline={isOnline}
         />
         <FilterBar
           systemFilter={systemFilter}
