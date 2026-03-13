@@ -32,11 +32,6 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
       header: () => <div className="flex items-center justify-center gap-1.5"><Hash className="w-3.5 h-3.5" /> Centro Custo</div>,
       cell: (info) => <div className="text-center font-mono text-sm font-medium text-slate-500">{info.getValue() as string}</div>
     },
-    { 
-      accessorKey: 'codigo', 
-      header: () => <div className="text-center">Código</div>,
-      cell: (info) => <div className="text-center font-mono text-sm font-bold text-blue-600">{info.getValue() as string}</div>
-    },
     {
       accessorKey: 'status',
       header: () => <div className="text-center">Status</div>,
@@ -63,6 +58,16 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
       cell: (info) => <div className="text-center font-medium text-slate-900">{info.getValue() as string}</div>
     },
     { 
+      accessorKey: 'codigo', 
+      header: () => <div className="text-center">Código</div>,
+      cell: (info) => <div className="text-center font-mono text-sm font-bold text-blue-600">{info.getValue() as string}</div>
+    },
+    { 
+      accessorKey: 'produto', 
+      header: () => <div className="flex items-center justify-center gap-1.5"><Package className="w-3.5 h-3.5" /> Produto</div>,
+      cell: (info) => <div className="text-center text-slate-600">{info.getValue() as string}</div>
+    },
+    { 
       accessorKey: 'sistema', 
       header: () => <div className="text-center">Sistema</div>,
       cell: (info) => <div className="text-center">{info.getValue() as string}</div>
@@ -71,11 +76,6 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
       accessorKey: 'sonda', 
       header: () => <div className="text-center">Sonda</div>,
       cell: (info) => <div className="text-center">{info.getValue() as string}</div>
-    },
-    { 
-      accessorKey: 'produto', 
-      header: () => <div className="flex items-center justify-center gap-1.5"><Package className="w-3.5 h-3.5" /> Produto</div>,
-      cell: (info) => <div className="text-center text-slate-600">{info.getValue() as string}</div>
     },
     {
       accessorKey: 'qtdSolicitada',
