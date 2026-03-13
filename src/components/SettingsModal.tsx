@@ -23,7 +23,7 @@ interface SettingsModalProps {
   onSyncWithCloud?: () => Promise<void>;
 }
 
-type TabId = 'perfil' | 'usuarios' | 'aparencia' | 'notificacoes' | 'dados' | 'historico';
+type TabId = 'perfil' | 'usuarios' | 'dados' | 'historico';
 
 export function SettingsModal({ isOpen, onClose, data, history, onClearData, onRestoreData, profile, theme, onThemeChange, density, onDensityChange, onSyncWithCloud }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('perfil');
@@ -176,17 +176,6 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
       setIsCreatingUser(false);
     }
   };
-
-  const [appearance, setAppearance] = useState({
-    theme: theme,
-    density: density
-  });
-
-  const [notifications, setNotifications] = useState({
-    emailAlerts: true,
-    systemAlerts: true,
-    weeklyReport: false
-  });
 
   if (!isOpen) return null;
 
@@ -356,8 +345,6 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
   const allTabs = [
     { id: 'perfil', label: 'Meu Perfil', icon: User, show: true },
     { id: 'usuarios', label: 'Gerenciar Usuários', icon: Users, show: isAdmin },
-    { id: 'aparencia', label: 'Aparência', icon: Palette, show: true },
-    { id: 'notificacoes', label: 'Notificações', icon: Bell, show: true },
     { id: 'dados', label: 'Dados e Backup', icon: Database, show: true },
     { id: 'historico', label: 'Histórico', icon: History, show: true },
   ] as const;
@@ -665,125 +652,6 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                 </div>
               )}
 
-              {/* APARÊNCIA */}
-              {activeTab === 'aparencia' && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                  <div>
-                    <h4 className="text-lg font-bold text-slate-800">Aparência</h4>
-                    <p className="text-sm text-slate-500">Personalize como o GEOSOL é exibido no seu dispositivo.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="text-sm font-medium text-slate-700">Tema do Sistema</label>
-                    <div className="grid grid-cols-3 gap-4">
-                      <button 
-                        onClick={() => { setAppearance({...appearance, theme: 'light'}); onThemeChange('light'); }}
-                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${theme === 'light' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
-                      >
-                        <Sun className={`w-6 h-6 ${theme === 'light' ? 'text-blue-600' : 'text-slate-400'}`} />
-                        <span className="text-sm font-medium text-slate-700">Claro</span>
-                      </button>
-                      <button 
-                        onClick={() => { setAppearance({...appearance, theme: 'dark'}); onThemeChange('dark'); }}
-                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${theme === 'dark' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
-                      >
-                        <Moon className={`w-6 h-6 ${theme === 'dark' ? 'text-blue-600' : 'text-slate-400'}`} />
-                        <span className="text-sm font-medium text-slate-700">Escuro</span>
-                      </button>
-                      <button 
-                        onClick={() => { setAppearance({...appearance, theme: 'system'}); onThemeChange('system'); }}
-                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${theme === 'system' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
-                      >
-                        <Monitor className={`w-6 h-6 ${theme === 'system' ? 'text-blue-600' : 'text-slate-400'}`} />
-                        <span className="text-sm font-medium text-slate-700">Sistema</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-100 space-y-4">
-                    <label className="text-sm font-medium text-slate-700">Densidade da Tabela</label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="density" 
-                          checked={density === 'standard'}
-                          onChange={() => { setAppearance({...appearance, density: 'standard'}); onDensityChange('standard'); }}
-                          className="text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-slate-700">Padrão</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="density" 
-                          checked={density === 'compact'}
-                          onChange={() => { setAppearance({...appearance, density: 'compact'}); onDensityChange('compact'); }}
-                          className="text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-slate-700">Compacta</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* NOTIFICAÇÕES */}
-              {activeTab === 'notificacoes' && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                  <div>
-                    <h4 className="text-lg font-bold text-slate-800">Notificações</h4>
-                    <p className="text-sm text-slate-500">Escolha como e quando você deseja ser alertado.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center h-5">
-                        <input 
-                          type="checkbox" 
-                          checked={notifications.emailAlerts}
-                          onChange={(e) => setNotifications({...notifications, emailAlerts: e.target.checked})}
-                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-800">Alertas por E-mail</p>
-                        <p className="text-sm text-slate-500">Receba um e-mail quando um pedido urgente for criado.</p>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center h-5">
-                        <input 
-                          type="checkbox" 
-                          checked={notifications.systemAlerts}
-                          onChange={(e) => setNotifications({...notifications, systemAlerts: e.target.checked})}
-                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-800">Notificações no Sistema</p>
-                        <p className="text-sm text-slate-500">Exibir pop-ups de notificação dentro do aplicativo.</p>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center h-5">
-                        <input 
-                          type="checkbox" 
-                          checked={notifications.weeklyReport}
-                          onChange={(e) => setNotifications({...notifications, weeklyReport: e.target.checked})}
-                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-800">Relatório Semanal</p>
-                        <p className="text-sm text-slate-500">Receba um resumo semanal do status do inventário.</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              )}
 
               {/* DADOS E BACKUP */}
               {activeTab === 'dados' && (
@@ -950,9 +818,16 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                             <div className="absolute -left-[9px] top-1 bg-white rounded-full p-0.5 border border-slate-200 shadow-sm">
                               {getHistoryIcon(event.type)}
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-800">{event.description}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold text-slate-800">{event.description}</p>
+                                {event.user_name && (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-bold uppercase tracking-wider">
+                                    {event.user_name}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-400 mt-0.5">
                                 {new Date(event.date).toLocaleString('pt-BR')}
                               </p>
                             </div>

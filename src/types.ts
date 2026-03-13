@@ -26,6 +26,7 @@ export interface HistoryEvent {
   id: string;
   date: string;
   description: string;
+  user_name?: string | null;
   type: 'CREATE' | 'UPDATE' | 'DELETE' | 'IMPORT';
 }
 

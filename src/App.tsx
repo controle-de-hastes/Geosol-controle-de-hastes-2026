@@ -115,15 +115,25 @@ export default function App() {
   };
 
   const addHistory = async (description: string, type: HistoryEvent['type']) => {
+    const userName = profile?.full_name || profile?.email || 'Sistema';
     const newEvent = {
         id: Math.random().toString(36).substr(2, 9),
         date: new Date().toISOString(),
         description,
-        type
+        type,
+        user_name: userName
     };
 
     try {
-      await supabase.from('history_events').insert([newEvent]);
+      const dbEvent = {
+        id: newEvent.id,
+        date: newEvent.date,
+        description: newEvent.description,
+        type: newEvent.type,
+        user_name: newEvent.user_name
+      };
+
+      await supabase.from('history_events').insert([dbEvent]);
       setHistory(prev => [newEvent, ...prev]);
     } catch (err) {
       console.error('Erro ao salvar histórico no banco:', err);
@@ -201,8 +211,18 @@ export default function App() {
         },
         (payload) => {
           console.log('Change received!', payload);
-          // Re-fetch everything to ensure consistency across all local counts and derived fields
+          // Re-fetch everything to ensure consistency
           fetchOrders();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'history_events',
+        },
+        () => {
           fetchHistory();
         }
       )
