@@ -329,6 +329,35 @@ export default function App() {
     }
   };
 
+  const handleSyncWithCloud = async () => {
+    try {
+      const dbOrders = initialData.map(o => ({
+        id: o.id,
+        codigo: o.codigo,
+        cc: o.cc,
+        cliente: o.cliente,
+        sistema: o.sistema,
+        sonda: o.sonda,
+        produto: o.produto,
+        qtd_solicitada: o.qtdSolicitada,
+        qtd_atendida: o.qtdAtendida,
+        data_necessidade: o.dataNecessidade,
+        data_atendimento_inicio: o.dataAtendimentoInicio,
+        data_atendimento_final: o.dataAtendimentoFinal,
+        categoria: o.categoria
+      }));
+
+      const { error } = await supabase.from('orders').upsert(dbOrders);
+      if (error) throw error;
+      
+      await fetchOrders();
+      addHistory('Dados iniciais sincronizados com a nuvem', 'IMPORT');
+    } catch (err) {
+      console.error('Erro ao sincronizar com nuvem:', err);
+      throw err;
+    }
+  };
+
   const handleEditOrder = async (updatedOrder: Order) => {
     try {
       const dbOrder = {
@@ -501,6 +530,7 @@ export default function App() {
         onThemeChange={setTheme}
         density={density}
         onDensityChange={setDensity}
+        onSyncWithCloud={handleSyncWithCloud}
       />
     </div>
   );

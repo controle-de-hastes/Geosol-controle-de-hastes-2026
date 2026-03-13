@@ -20,11 +20,12 @@ interface SettingsModalProps {
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
   density: 'standard' | 'compact';
   onDensityChange: (density: 'standard' | 'compact') => void;
+  onSyncWithCloud?: () => Promise<void>;
 }
 
 type TabId = 'perfil' | 'usuarios' | 'aparencia' | 'notificacoes' | 'dados' | 'historico';
 
-export function SettingsModal({ isOpen, onClose, data, history, onClearData, onRestoreData, profile, theme, onThemeChange, density, onDensityChange }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, data, history, onClearData, onRestoreData, profile, theme, onThemeChange, density, onDensityChange, onSyncWithCloud }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('perfil');
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -41,6 +42,8 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState('');
   const [createUserSuccess, setCreateUserSuccess] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
 
   // State for inline user editing
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -198,6 +201,21 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleSyncToCloud = async () => {
+    if (!onSyncWithCloud) return;
+    setIsSyncing(true);
+    setSaveError('');
+    try {
+      await onSyncWithCloud();
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 3000);
+    } catch (err: any) {
+      setSaveError(err.message || 'Erro ao sincronizar dados.');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleClearData = () => {
@@ -818,7 +836,54 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                         )}
                       </div>
                     </div>
-
+                    {/* Cloud Sync Section - Only for Admins */}
+                    {isAdmin && (
+                      <div className="bg-blue-600/5 dark:bg-blue-600/10 border border-blue-200 dark:border-blue-900/50 rounded-2xl p-6 mb-6 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-blue-600 rounded-xl">
+                            <RefreshCcw className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-slate-900 dark:text-white">Sincronizar com Nuvem</h5>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Envia os registros iniciais para o Supabase para que fiquem visíveis para todos.</p>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={handleSyncToCloud}
+                          disabled={isSyncing}
+                          className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all shadow-md ${
+                            syncSuccess 
+                            ? 'bg-emerald-600 text-white' 
+                            : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {isSyncing ? (
+                            <>
+                              <RefreshCcw className="w-5 h-5 animate-spin" />
+                              <span>Sincronizando...</span>
+                            </>
+                          ) : syncSuccess ? (
+                            <>
+                              <Check className="w-5 h-5" />
+                              <span>Sincronizado na Nuvem!</span>
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCcw className="w-5 h-5" />
+                              <span>Enviar Dados para Nuvem</span>
+                            </>
+                          )}
+                        </button>
+                        
+                        {saveError && activeTab === 'dados' && (
+                          <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 text-xs">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                            <p>{saveError}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {isAdmin && (
                       <div className="p-4 border border-red-200 bg-red-50/50 rounded-xl">
