@@ -18,12 +18,14 @@ export function DashboardCards({ data }: DashboardCardsProps) {
     .filter((o) => o.sistema === 'Sul')
     .reduce((acc, o) => acc + o.qtdPendente, 0);
 
-  // 3. Sondas com maior volume de pedidos
+  // 3. Sondas com mais PEDIDOS (Volume de registros)
   const sondasVolume = data.reduce((acc, order) => {
-    acc[order.sonda] = (acc[order.sonda] || 0) + order.qtdSolicitada;
+    const sondaName = order.sonda || 'Não identificada';
+    acc[sondaName] = (acc[sondaName] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  const topSonda = Object.entries(sondasVolume).sort((a, b) => b[1] - a[1])[0];
+  const topSonda = Object.entries(sondasVolume)
+    .sort((a, b) => b[1] - a[1])[0];
 
   // 4. Taxa de atendimento (%)
   const totalSolicitado = data.reduce((acc, order) => acc + order.qtdSolicitada, 0);
@@ -37,28 +39,28 @@ export function DashboardCards({ data }: DashboardCardsProps) {
         value={totalPendentes.toLocaleString()}
         icon={<Package className="w-5 h-5 text-amber-600" />}
         subtitle="Hastes aguardando envio"
-        color="border-amber-200 bg-amber-50"
+        color="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20"
       />
       <Card
         title="Pendências por Sistema"
         value={`${pendentesNorte} N / ${pendentesSul} S`}
         icon={<MapPin className="w-5 h-5 text-blue-600" />}
         subtitle="Distribuição regional"
-        color="border-blue-200 bg-blue-50"
+        color="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20"
       />
       <Card
-        title="Top Sonda (Volume)"
+        title="Top Sonda (Volume de Pedidos)"
         value={topSonda ? topSonda[0] : '-'}
         icon={<TrendingUp className="w-5 h-5 text-indigo-600" />}
-        subtitle={topSonda ? `${topSonda[1]} hastes solicitadas` : ''}
-        color="border-indigo-200 bg-indigo-50"
+        subtitle={topSonda ? `${topSonda[1]} pedidos registrados` : 'Sem pedidos'}
+        color="border-indigo-200 bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-950/20"
       />
       <Card
         title="Taxa de Atendimento"
         value={`${taxaAtendimento}%`}
         icon={<AlertCircle className="w-5 h-5 text-emerald-600" />}
         subtitle="Volume geral entregue"
-        color="border-emerald-200 bg-emerald-50"
+        color="border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20"
       />
     </div>
   );
@@ -68,11 +70,11 @@ function Card({ title, value, icon, subtitle, color }: { title: string; value: s
   return (
     <div className={`p-4 rounded-xl border ${color} shadow-sm flex flex-col`}>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-slate-700">{title}</h3>
-        <div className="p-2 bg-white rounded-lg shadow-sm">{icon}</div>
+        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">{title}</h3>
+        <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">{icon}</div>
       </div>
-      <div className="text-2xl font-bold text-slate-900">{value}</div>
-      <div className="text-xs text-slate-500 mt-1">{subtitle}</div>
+      <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{value}</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{subtitle}</div>
     </div>
   );
 }

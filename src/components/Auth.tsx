@@ -5,7 +5,6 @@ import logoImg from '../assets/logo.png';
 
 export function Auth() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -16,21 +15,11 @@ export function Auth() {
     setError(null);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        alert('Conta de administrador criada com sucesso! Faça o login agora.');
-        setIsLogin(true);
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
     } catch (error: any) {
       setError(error.message || 'Ocorreu um erro durante a autenticação.');
     } finally {
@@ -43,8 +32,8 @@ export function Auth() {
       <div className="w-full max-w-md">
         {/* Logo Header */}
         <div className="flex flex-col items-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="w-20 h-20 mb-4 bg-slate-800 rounded-2xl flex items-center justify-center shadow-xl border border-slate-700/50 p-4">
-            <img src={logoImg} alt="GEOSOL" className="w-full h-full object-contain drop-shadow-lg" />
+          <div className="w-24 h-24 mb-6 flex items-center justify-center">
+            <img src={logoImg} alt="GEOSOL" className="w-full h-full object-contain drop-shadow-2xl" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">GEOSOL</h1>
           <p className="text-slate-400 mt-2 font-medium">Controle de Hastes</p>
@@ -53,7 +42,7 @@ export function Auth() {
         {/* Auth Card */}
         <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
           <h2 className="text-xl font-semibold text-white mb-6">
-            {isLogin ? 'Entrar na sua conta' : 'Criar Conta Administrador'}
+            Entrar na sua conta
           </h2>
 
           {error && (
@@ -102,39 +91,18 @@ export function Auth() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {isLogin ? 'Entrando...' : 'Criando...'}
+                  Entrando...
                 </>
               ) : (
-                isLogin ? 'Entrar' : 'Criar Conta Admin'
+                'Entrar'
               )}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            {isLogin ? (
-              <p className="text-sm text-slate-400">
-                O acesso é restrito. <br/>
-                <button 
-                  onClick={() => {
-                    setIsLogin(false);
-                    setError(null);
-                  }} 
-                  className="text-blue-400 hover:text-blue-300 mt-2 underline"
-                >
-                  Criar minha conta de Administrador
-                </button>
-              </p>
-            ) : (
-              <button 
-                onClick={() => {
-                  setIsLogin(true);
-                  setError(null);
-                }} 
-                className="text-sm text-slate-400 hover:text-white"
-              >
-                Voltar para o Login
-              </button>
-            )}
+            <p className="text-sm text-slate-400 text-center">
+              O acesso é restrito para usuários cadastrados.
+            </p>
           </div>
         </div>
       </div>

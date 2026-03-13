@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, ReactNode } from 'react';
 import { Category, Profile } from '../types';
-import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield } from 'lucide-react';
+import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield, FileSpreadsheet } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { supabase } from '../lib/supabase';
+import { downloadExcelTemplate, exportOrdersToExcel } from '../lib/excelUtils';
+import type { ExportOrder } from '../lib/excelUtils';
 
 interface TopBarProps {
   activeCategory: Category | 'Geral';
@@ -13,6 +15,7 @@ interface TopBarProps {
   onNewOrder: () => void;
   onImportClick: () => void;
   profile: Profile | null;
+  exportData?: ExportOrder[];
 }
 
 export function TopBar({ 
@@ -23,7 +26,8 @@ export function TopBar({
   setSearchTerm,
   onNewOrder,
   onImportClick,
-  profile
+  profile,
+  exportData,
 }: TopBarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
@@ -61,7 +65,7 @@ export function TopBar({
   const isAdmin = profile?.role === 'admin';
 
   return (
-    <header className="relative w-full h-16 bg-transparent text-slate-300 flex items-center justify-between px-6 z-30 shrink-0">
+    <header className="relative w-full h-16 bg-transparent text-slate-300 flex items-center justify-between px-6 z-50 shrink-0">
       {/* Logo Section */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 flex items-center justify-center">
@@ -187,10 +191,28 @@ export function TopBar({
               </button>
               <div className="h-px bg-slate-700 my-1"></div>
               <button 
-                onClick={() => { window.print(); setIsActionsOpen(false); }} 
+                onClick={() => { downloadExcelTemplate(); setIsActionsOpen(false); }} 
                 className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                title="Baixar planilha modelo para preenchimento"
               >
-                <Download className="w-4 h-4" /> Exportar PDF
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> Baixar Modelo Excel
+              </button>
+              <button 
+                onClick={() => { 
+                  if (exportData && exportData.length > 0) {
+                    exportOrdersToExcel(exportData, activeCategory === 'Geral' ? 'Todos Pedidos' : activeCategory);
+                  }
+                  setIsActionsOpen(false); 
+                }} 
+                className={`w-full text-left px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors ${
+                  exportData && exportData.length > 0
+                    ? 'text-emerald-400 hover:bg-slate-700 hover:text-emerald-300'
+                    : 'text-slate-500 cursor-not-allowed opacity-50'
+                }`}
+                disabled={!exportData || exportData.length === 0}
+                title={exportData && exportData.length > 0 ? `Exportar ${exportData.length} registros para Excel` : 'Sem dados para exportar'}
+              >
+                <Download className="w-4 h-4" /> Exportar Excel ({exportData?.length ?? 0})
               </button>
             </div>
           )}
@@ -219,17 +241,13 @@ export function TopBar({
                 <p className="text-xs text-slate-400 truncate" title={profile?.email}>{profile?.email || 'Carregando...'}</p>
               </div>
               
-              {isAdmin && (
-                <>
-                  <button 
-                    onClick={() => { onOpenSettings(); setIsProfileOpen(false); }} 
-                    className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-                  >
-                    <Settings className="w-4 h-4" /> Configurações
-                  </button>
-                  <div className="h-px bg-slate-700 my-1"></div>
-                </>
-              )}
+              <button 
+                onClick={() => { onOpenSettings(); setIsProfileOpen(false); }} 
+                className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+              >
+                <Settings className="w-4 h-4" /> Configurações
+              </button>
+              <div className="h-px bg-slate-700 my-1"></div>
               
               <button 
                 onClick={async () => { 

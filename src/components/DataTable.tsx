@@ -20,9 +20,10 @@ interface DataTableProps {
   data: ComputedOrder[];
   updateDataById: (id: string, columnId: string, value: unknown) => void;
   onEdit: (order: Order) => void;
+  density?: 'standard' | 'compact';
 }
 
-export function DataTable({ data, updateDataById, onEdit }: DataTableProps) {
+export function DataTable({ data, updateDataById, onEdit, density = 'standard' }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const columns: ColumnDef<ComputedOrder>[] = [
@@ -281,16 +282,16 @@ export function DataTable({ data, updateDataById, onEdit }: DataTableProps) {
   });
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+    <div className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-full overflow-hidden">
       <div className="overflow-auto flex-1 relative">
         <table className="w-full text-sm text-left border-collapse">
-          <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
+          <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-slate-200">
+              <tr key={headerGroup.id} className="border-b border-slate-200 dark:border-slate-700">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest whitespace-nowrap select-none group text-center"
+                    className={`px-4 ${density === 'compact' ? 'py-2' : 'py-4'} font-bold text-slate-500 dark:text-slate-400 uppercase text-xs tracking-widest whitespace-nowrap select-none group text-center`}
                   >
                     {header.isPlaceholder ? null : (
                       <div
@@ -310,11 +311,11 @@ export function DataTable({ data, updateDataById, onEdit }: DataTableProps) {
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
+              <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors group">
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-5 py-4 whitespace-nowrap align-middle">
+                  <td key={cell.id} className={`px-5 ${density === 'compact' ? 'py-2' : 'py-4'} whitespace-nowrap align-middle`}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

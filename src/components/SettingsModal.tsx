@@ -14,12 +14,17 @@ interface SettingsModalProps {
   data: Order[];
   history: HistoryEvent[];
   onClearData: () => void;
+  onRestoreData?: (data: Order[]) => void;
   profile: Profile | null;
+  theme: 'light' | 'dark' | 'system';
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
+  density: 'standard' | 'compact';
+  onDensityChange: (density: 'standard' | 'compact') => void;
 }
 
 type TabId = 'perfil' | 'usuarios' | 'aparencia' | 'notificacoes' | 'dados' | 'historico';
 
-export function SettingsModal({ isOpen, onClose, data, history, onClearData, profile }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, data, history, onClearData, onRestoreData, profile, theme, onThemeChange, density, onDensityChange }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('perfil');
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -170,8 +175,8 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
   };
 
   const [appearance, setAppearance] = useState({
-    theme: 'light',
-    density: 'standard'
+    theme: theme,
+    density: density
   });
 
   const [notifications, setNotifications] = useState({
@@ -199,6 +204,67 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
     onClearData();
     setShowConfirmClear(false);
     onClose();
+  };
+
+  const handleRestoreJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const restoredData: Order[] = JSON.parse(content);
+
+        // Validation: Expecting an array of orders
+        if (!Array.isArray(restoredData)) {
+          throw new Error('O arquivo de backup é inválido.');
+        }
+
+        setIsSaving(true);
+        setSaveError('');
+
+        // Prepare data for Supabase
+        const dbOrders = restoredData.map(o => ({
+          id: o.id,
+          codigo: o.codigo,
+          cc: o.cc,
+          cliente: o.cliente,
+          sistema: o.sistema,
+          sonda: o.sonda,
+          produto: o.produto,
+          qtd_solicitada: o.qtdSolicitada,
+          qtd_atendida: o.qtdAtendida,
+          data_necessidade: o.dataNecessidade,
+          data_atendimento_inicio: o.dataAtendimentoInicio,
+          data_atendimento_final: o.dataAtendimentoFinal,
+          categoria: o.categoria
+        }));
+
+        // Upsert data to Supabase
+        const { error } = await supabase.from('orders').upsert(dbOrders);
+        
+        if (error) throw error;
+
+        if (onRestoreData) {
+          onRestoreData(restoredData);
+        }
+
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
+        alert('Backup restaurado com sucesso!');
+        onClose();
+      } catch (err: any) {
+        console.error('Erro ao restaurar backup:', err);
+        setSaveError(err.message || 'Erro ao processar o arquivo de backup.');
+      } finally {
+        setIsSaving(false);
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    event.target.value = '';
   };
 
   const handleSaveProfile = async () => {
@@ -274,8 +340,8 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
     { id: 'usuarios', label: 'Gerenciar Usuários', icon: Users, show: isAdmin },
     { id: 'aparencia', label: 'Aparência', icon: Palette, show: true },
     { id: 'notificacoes', label: 'Notificações', icon: Bell, show: true },
-    { id: 'dados', label: 'Dados e Backup', icon: Database, show: isAdmin },
-    { id: 'historico', label: 'Histórico', icon: History, show: isAdmin },
+    { id: 'dados', label: 'Dados e Backup', icon: Database, show: true },
+    { id: 'historico', label: 'Histórico', icon: History, show: true },
   ] as const;
 
   const visibleTabs = allTabs.filter(tab => tab.show);
@@ -593,24 +659,24 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
                     <label className="text-sm font-medium text-slate-700">Tema do Sistema</label>
                     <div className="grid grid-cols-3 gap-4">
                       <button 
-                        onClick={() => setAppearance({...appearance, theme: 'light'})}
-                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${appearance.theme === 'light' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
+                        onClick={() => { setAppearance({...appearance, theme: 'light'}); onThemeChange('light'); }}
+                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${theme === 'light' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
                       >
-                        <Sun className={`w-6 h-6 ${appearance.theme === 'light' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <Sun className={`w-6 h-6 ${theme === 'light' ? 'text-blue-600' : 'text-slate-400'}`} />
                         <span className="text-sm font-medium text-slate-700">Claro</span>
                       </button>
                       <button 
-                        onClick={() => setAppearance({...appearance, theme: 'dark'})}
-                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${appearance.theme === 'dark' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
+                        onClick={() => { setAppearance({...appearance, theme: 'dark'}); onThemeChange('dark'); }}
+                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${theme === 'dark' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
                       >
-                        <Moon className={`w-6 h-6 ${appearance.theme === 'dark' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <Moon className={`w-6 h-6 ${theme === 'dark' ? 'text-blue-600' : 'text-slate-400'}`} />
                         <span className="text-sm font-medium text-slate-700">Escuro</span>
                       </button>
                       <button 
-                        onClick={() => setAppearance({...appearance, theme: 'system'})}
-                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${appearance.theme === 'system' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
+                        onClick={() => { setAppearance({...appearance, theme: 'system'}); onThemeChange('system'); }}
+                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${theme === 'system' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
                       >
-                        <Monitor className={`w-6 h-6 ${appearance.theme === 'system' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <Monitor className={`w-6 h-6 ${theme === 'system' ? 'text-blue-600' : 'text-slate-400'}`} />
                         <span className="text-sm font-medium text-slate-700">Sistema</span>
                       </button>
                     </div>
@@ -623,8 +689,8 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
                         <input 
                           type="radio" 
                           name="density" 
-                          checked={appearance.density === 'standard'}
-                          onChange={() => setAppearance({...appearance, density: 'standard'})}
+                          checked={density === 'standard'}
+                          onChange={() => { setAppearance({...appearance, density: 'standard'}); onDensityChange('standard'); }}
                           className="text-blue-600 focus:ring-blue-500"
                         />
                         <span className="text-sm text-slate-700">Padrão</span>
@@ -633,8 +699,8 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
                         <input 
                           type="radio" 
                           name="density" 
-                          checked={appearance.density === 'compact'}
-                          onChange={() => setAppearance({...appearance, density: 'compact'})}
+                          checked={density === 'compact'}
+                          onChange={() => { setAppearance({...appearance, density: 'compact'}); onDensityChange('compact'); }}
                           className="text-blue-600 focus:ring-blue-500"
                         />
                         <span className="text-sm text-slate-700">Compacta</span>
@@ -702,7 +768,7 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
               )}
 
               {/* DADOS E BACKUP */}
-              {activeTab === 'dados' && isAdmin && (
+              {activeTab === 'dados' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <div>
                     <h4 className="text-lg font-bold text-slate-800">Dados e Backup</h4>
@@ -710,65 +776,97 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, pro
                   </div>
 
                   <div className="space-y-4">
-                    <div className="p-4 border border-slate-200 rounded-xl">
-                      <h5 className="text-sm font-bold text-slate-800 mb-1">Exportar Backup</h5>
-                      <p className="text-sm text-slate-500 mb-4">
-                        Baixe todos os pedidos e registros atuais para um arquivo JSON. Útil para migração ou segurança.
-                      </p>
-                      <button
-                        onClick={handleExportJson}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
-                        Exportar Dados (JSON)
-                      </button>
+                    <div className="p-4 border border-slate-200 rounded-xl space-y-6">
+                      <div>
+                        <h5 className="text-sm font-bold text-slate-800 mb-1">Exportar Backup</h5>
+                        <p className="text-sm text-slate-500 mb-4">
+                          Baixe todos os pedidos e registros atuais para um arquivo JSON. Útil para migração ou segurança.
+                        </p>
+                        <button
+                          onClick={handleExportJson}
+                          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          Exportar Dados (JSON)
+                        </button>
+                      </div>
+
+                      <div className="pt-6 border-t border-slate-100">
+                        <h5 className="text-sm font-bold text-slate-800 mb-1">Restaurar Backup</h5>
+                        <p className="text-sm text-slate-500 mb-4">
+                          Importe dados de um arquivo de backup (.json) previamente exportado. Isso substituirá ou adicionará registros existentes.
+                        </p>
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept=".json"
+                            onChange={handleRestoreJson}
+                            id="restore-backup"
+                            className="hidden"
+                          />
+                          <button
+                            onClick={() => document.getElementById('restore-backup')?.click()}
+                            disabled={isSaving}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                          >
+                            <RefreshCcw className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+                            {isSaving ? 'Restaurando...' : 'Restaurar Backup (JSON)'}
+                          </button>
+                        </div>
+                        {saveError && activeTab === 'dados' && (
+                          <p className="mt-2 text-xs text-red-600 font-medium">{saveError}</p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-4 border border-red-200 bg-red-50/50 rounded-xl">
-                      <h5 className="text-sm font-bold text-red-700 flex items-center gap-2 mb-1">
-                        <AlertTriangle className="w-4 h-4" />
-                        Zona de Perigo
-                      </h5>
-                      <p className="text-sm text-red-600/80 mb-4">
-                        Atenção: Esta ação irá apagar permanentemente todos os registros do sistema. Certifique-se de ter um backup.
-                      </p>
-                      
-                      {!showConfirmClear ? (
-                        <button
-                          onClick={() => setShowConfirmClear(true)}
-                          className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Limpar Todos os Dados
-                        </button>
-                      ) : (
-                        <div className="bg-white border border-red-200 rounded-lg p-4 space-y-3">
-                          <p className="text-sm font-bold text-red-800">
-                            Tem certeza absoluta? Esta ação não pode ser desfeita.
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                               onClick={() => setShowConfirmClear(false)}
-                              className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              onClick={handleClearData}
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition-colors"
-                            >
-                              Sim, Apagar Tudo
-                            </button>
+
+                    {isAdmin && (
+                      <div className="p-4 border border-red-200 bg-red-50/50 rounded-xl">
+                        <h5 className="text-sm font-bold text-red-700 flex items-center gap-2 mb-1">
+                          <AlertTriangle className="w-4 h-4" />
+                          Zona de Perigo
+                        </h5>
+                        <p className="text-sm text-red-600/80 mb-4">
+                          Atenção: Esta ação irá apagar permanentemente todos os registros do sistema. Certifique-se de ter um backup.
+                        </p>
+                        
+                        {!showConfirmClear ? (
+                          <button
+                            onClick={() => setShowConfirmClear(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Limpar Todos os Dados
+                          </button>
+                        ) : (
+                          <div className="bg-white border border-red-200 rounded-lg p-4 space-y-3">
+                            <p className="text-sm font-bold text-red-800">
+                              Tem certeza absoluta? Esta ação não pode ser desfeita.
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                 onClick={() => setShowConfirmClear(false)}
+                                className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={handleClearData}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition-colors"
+                              >
+                                Sim, Apagar Tudo
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* HISTÓRICO DE MOVIMENTAÇÕES */}
-              {activeTab === 'historico' && isAdmin && (
+              {activeTab === 'historico' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <div>
                     <h4 className="text-lg font-bold text-slate-800">Histórico de Movimentações</h4>

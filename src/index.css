@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+/* 
+   The user prefers the absolute original look. 
+   I will clear all my previous manual overrides in index.css 
+   and rely strictly on default Tailwind classes plus dark: variants 
+   in the component files themselves.
+*/
+
+.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}

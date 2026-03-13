@@ -1,25 +1,14 @@
 import { useState, useRef, ChangeEvent, DragEvent } from 'react';
 import { X, Upload, Download, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { Order, System, Category } from '../types';
+import { downloadExcelTemplate } from '../lib/excelUtils';
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (orders: Order[]) => void;
 }
-
-const TEMPLATE_HEADERS = [
-  'Código',
-  'Centro Custo',
-  'Cliente',
-  'Sistema',
-  'Sonda',
-  'Produto',
-  'Qtd Solicitada',
-  'Data Necessidade',
-  'Categoria'
-];
 
 export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
   const [error, setError] = useState<string | null>(null);
@@ -28,89 +17,103 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
 
   if (!isOpen) return null;
 
-  const handleDownloadTemplate = () => {
-    const csvContent = TEMPLATE_HEADERS.join(',') + '\n';
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'modelo_importacao_pedidos.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const processFile = (file: File) => {
     setError(null);
     
-    if (!file.name.endsWith('.csv')) {
-      setError('Por favor, selecione um arquivo CSV válido.');
+    if (!file.name.endsWith('.xlsx')) {
+      setError('Por favor, selecione um arquivo Excel (.xlsx) válido.');
       return;
     }
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        try {
-          const orders: Order[] = results.data.map((row: any, index) => {
-            // Validate required fields
-            const codigo = row['Código']?.trim();
-            const cc = row['Centro Custo']?.trim();
-            const cliente = row['Cliente']?.trim();
-            const sistema = row['Sistema']?.trim() as System;
-            const sonda = row['Sonda']?.trim();
-            const produto = row['Produto']?.trim();
-            const qtdSolicitada = parseInt(row['Qtd Solicitada'], 10);
-            const dataNecessidade = row['Data Necessidade']?.trim();
-            const categoria = row['Categoria']?.trim() as Category;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        
+        // Get first sheet
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert to JSON
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
-            if (!codigo || !cc || !cliente || !sistema || !sonda || !produto || isNaN(qtdSolicitada) || !dataNecessidade || !categoria) {
-              throw new Error(`Linha ${index + 2}: Dados incompletos ou inválidos.`);
-            }
+        if (jsonData.length === 0) {
+          setError('O arquivo está vazio ou não contém dados válidos.');
+          return;
+        }
 
-            if (sistema !== 'Norte' && sistema !== 'Sul') {
-              throw new Error(`Linha ${index + 2}: Sistema inválido. Use 'Norte' ou 'Sul'.`);
-            }
+        const orders: Order[] = jsonData.map((row: any, index) => {
+          const codigo = row['Código']?.toString().trim();
+          const cc = row['Centro Custo']?.toString().trim();
+          const cliente = row['Cliente']?.toString().trim();
+          const sonda = row['Sonda']?.toString().trim();
+          const produto = row['Produto']?.toString().trim();
+          const qtdSolicitada = parseInt(row['Qtd Solicitada'], 10);
+          
+          // Normalize Sistema: accept Norte/Sul/norte/sul/NORTE/SUL
+          const sistemaRaw = row['Sistema']?.toString().trim();
+          const sistemaLower = sistemaRaw?.toLowerCase();
+          let sistema: System;
+          if (sistemaLower === 'norte') sistema = 'Norte';
+          else if (sistemaLower === 'sul') sistema = 'Sul';
+          else sistema = sistemaRaw as System;
 
-            const validCategories = ['Hastes Novas', 'Hastes Usadas', 'Hastes Recuperadas', 'Revestimentos HW'];
-            if (!validCategories.includes(categoria)) {
-              throw new Error(`Linha ${index + 2}: Categoria inválida. Use '${validCategories.join("', '")}'.`);
-            }
-
-            return {
-              id: `ORD-IMP-${Math.floor(Math.random() * 100000)}`,
-              codigo,
-              cc,
-              cliente,
-              sistema,
-              sonda,
-              produto,
-              qtdSolicitada,
-              qtdAtendida: 0,
-              dataNecessidade,
-              dataAtendimentoInicio: null,
-              dataAtendimentoFinal: null,
-              categoria,
-            };
-          });
-
-          if (orders.length === 0) {
-            setError('O arquivo está vazio ou não contém dados válidos.');
-            return;
+          // Handle potentially different date formats in Excel
+          let dataNecessidade = row['Data Necessidade'];
+          if (dataNecessidade instanceof Date) {
+            dataNecessidade = dataNecessidade.toISOString().split('T')[0];
+          } else {
+            dataNecessidade = dataNecessidade?.toString().trim();
           }
 
-          onImport(orders);
-          onClose();
-        } catch (err: any) {
-          setError(err.message || 'Erro ao processar o arquivo. Verifique se o formato está correto.');
-        }
-      },
-      error: (err) => {
-        setError(`Erro ao ler o arquivo: ${err.message}`);
+          // Normalize Categoria: case-insensitive match
+          const categoriaRaw = row['Categoria']?.toString().trim();
+          const validCategories = ['Hastes Novas', 'Hastes Usadas', 'Hastes Recuperadas', 'Revestimentos HW'];
+          const categoriaMatch = validCategories.find(c => c.toLowerCase() === categoriaRaw?.toLowerCase());
+          const categoria = (categoriaMatch || categoriaRaw) as Category;
+
+          if (!codigo || !cc || !cliente || !sistema || !produto || isNaN(qtdSolicitada) || !dataNecessidade || !categoria) {
+            throw new Error(`Linha ${index + 2}: Dados incompletos ou inválidos. (Verifique: Código, CC, Cliente, Sistema, Produto, Qtd, Data e Categoria)`);
+          }
+
+          if (sistema !== 'Norte' && sistema !== 'Sul') {
+            throw new Error(`Linha ${index + 2}: Sistema inválido. Use 'Norte' ou 'Sul' (linha informou: '${sistemaRaw}').`);
+          }
+
+          if (!categoriaMatch) {
+            throw new Error(`Linha ${index + 2}: Categoria inválida. Use '${validCategories.join("', '")}'.`);
+          }
+
+          return {
+            id: `ORD-IMP-${Math.floor(Math.random() * 100000)}`,
+            codigo,
+            cc,
+            cliente,
+            sistema,
+            sonda,
+            produto,
+            qtdSolicitada,
+            qtdAtendida: 0,
+            dataNecessidade,
+            dataAtendimentoInicio: null,
+            dataAtendimentoFinal: null,
+            categoria,
+          };
+        });
+
+        onImport(orders);
+        onClose();
+      } catch (err: any) {
+        setError(err.message || 'Erro ao processar o arquivo. Verifique se o formato está correto.');
       }
-    });
+    };
+    
+    reader.onerror = () => {
+      setError('Erro ao ler o arquivo.');
+    };
+    
+    reader.readAsArrayBuffer(file);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -148,7 +151,7 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-blue-600" />
+            <FileSpreadsheet className="w-5 h-5 text-green-600" />
             Importar Pedidos em Massa
           </h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
@@ -161,16 +164,16 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
             <p className="font-medium mb-2">Como importar:</p>
             <ol className="list-decimal list-inside space-y-1 text-blue-700">
               <li>Baixe o modelo de planilha clicando no botão abaixo.</li>
-              <li>Preencha os dados seguindo o formato exato das colunas.</li>
-              <li>Salve o arquivo como CSV (separado por vírgulas).</li>
+              <li>Preencha os dados seguindo o formato das colunas.</li>
+              <li>Mantenha o formato de arquivo Excel (.xlsx).</li>
               <li>Faça o upload do arquivo preenchido aqui.</li>
             </ol>
             <button 
-              onClick={handleDownloadTemplate}
+              onClick={downloadExcelTemplate}
               className="mt-3 flex items-center gap-2 px-4 py-2 bg-white text-blue-700 border border-blue-200 rounded-md text-xs font-bold hover:bg-blue-100 transition-colors"
             >
               <Download className="w-4 h-4" />
-              Baixar Modelo CSV
+              Baixar Modelo Excel
             </button>
           </div>
 
@@ -185,17 +188,17 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
           >
             <input 
               type="file" 
-              accept=".csv" 
+              accept=".xlsx" 
               className="hidden" 
               ref={fileInputRef}
               onChange={handleFileChange}
             />
             <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragging ? 'text-blue-500' : 'text-slate-400'}`} />
             <p className="text-sm font-medium text-slate-700">
-              Clique para selecionar ou arraste o arquivo CSV aqui
+              Clique para selecionar ou arraste o arquivo Excel aqui
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Apenas arquivos .csv são suportados
+              Apenas arquivos .xlsx são suportados
             </p>
           </div>
 
