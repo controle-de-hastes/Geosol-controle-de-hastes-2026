@@ -28,3 +28,11 @@ export interface HistoryEvent {
   description: string;
   type: 'CREATE' | 'UPDATE' | 'DELETE' | 'IMPORT';
 }
+
+export interface Profile {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  role: 'admin' | 'user';
+  created_at?: string;
+}

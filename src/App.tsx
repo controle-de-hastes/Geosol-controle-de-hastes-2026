@@ -12,9 +12,11 @@ import { supabase } from './lib/supabase';
 import { initialData } from './data';
 import { Order, ComputedOrder, Category, System, HistoryEvent } from './types';
 import { Session } from '@supabase/supabase-js';
+import { Profile } from './types';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [data, setData] = useState<Order[]>(initialData);
   const [history, setHistory] = useState<HistoryEvent[]>([
@@ -44,16 +46,44 @@ export default function App() {
     }, ...prev]);
   };
 
+  const loadProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error('Error loading profile:', error);
+      } else if (data) {
+        setProfile(data as Profile);
+      }
+    } catch (err) {
+      console.error('Unexpected error loading profile:', err);
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setIsLoadingAuth(false);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setIsLoadingAuth(false);
+      }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user) {
+        loadProfile(session.user.id).finally(() => setIsLoadingAuth(false));
+      } else {
+        setProfile(null);
+        setIsLoadingAuth(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -183,6 +213,7 @@ export default function App() {
             setIsModalOpen(true);
           }}
           onImportClick={() => setIsImportModalOpen(true)}
+          profile={profile}
         />
         <FilterBar
           systemFilter={systemFilter}
@@ -258,6 +289,7 @@ export default function App() {
         onClose={() => setIsSettingsModalOpen(false)}
         data={data}
         history={history}
+        profile={profile}
         onClearData={() => {
           setData([]);
           addHistory('Todos os dados foram apagados.', 'DELETE');

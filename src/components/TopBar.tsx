@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ReactNode } from 'react';
-import { Category } from '../types';
+import { Category, Profile } from '../types';
 import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,7 @@ interface TopBarProps {
   setSearchTerm: (term: string) => void;
   onNewOrder: () => void;
   onImportClick: () => void;
+  profile: Profile | null;
 }
 
 export function TopBar({ 
@@ -21,7 +22,8 @@ export function TopBar({
   searchTerm,
   setSearchTerm,
   onNewOrder,
-  onImportClick
+  onImportClick,
+  profile
 }: TopBarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
@@ -56,6 +58,7 @@ export function TopBar({
   ];
 
   const isHastesActive = hastesCategories.some(cat => cat.id === activeCategory);
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <header className="relative w-full h-16 bg-transparent text-slate-300 flex items-center justify-between px-6 z-30 shrink-0">
@@ -203,7 +206,7 @@ export function TopBar({
             title="Perfil e Configurações"
           >
             <img 
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=GEOSOL&backgroundColor=1e293b" 
+              src={`https://api.dicebear.com/7.x/initials/svg?seed=${profile?.full_name || profile?.email || 'User'}&backgroundColor=1e293b`}
               alt="Perfil" 
               className="w-full h-full object-cover"
             />
@@ -212,24 +215,21 @@ export function TopBar({
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2">
               <div className="px-4 py-3 border-b border-slate-700 mb-1">
-                <p className="text-sm font-bold text-white">Administrador</p>
-                <p className="text-xs text-slate-400">admin@geosol.com</p>
+                <p className="text-sm font-bold text-white capitalize">{profile?.full_name || (isAdmin ? 'Administrador' : 'Usuário Padrão')}</p>
+                <p className="text-xs text-slate-400 truncate" title={profile?.email}>{profile?.email || 'Carregando...'}</p>
               </div>
               
-              <button 
-                onClick={() => { onOpenSettings(); setIsProfileOpen(false); }} 
-                className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-              >
-                <Settings className="w-4 h-4" /> Configurações
-              </button>
-              <button 
-                onClick={() => setIsProfileOpen(false)} 
-                className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-              >
-                <Shield className="w-4 h-4" /> Permissões (Em breve)
-              </button>
-              
-              <div className="h-px bg-slate-700 my-1"></div>
+              {isAdmin && (
+                <>
+                  <button 
+                    onClick={() => { onOpenSettings(); setIsProfileOpen(false); }} 
+                    className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                  >
+                    <Settings className="w-4 h-4" /> Configurações
+                  </button>
+                  <div className="h-px bg-slate-700 my-1"></div>
+                </>
+              )}
               
               <button 
                 onClick={async () => { 

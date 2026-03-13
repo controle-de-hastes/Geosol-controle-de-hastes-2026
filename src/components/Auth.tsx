@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Layers, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
 export function Auth() {
@@ -28,8 +28,8 @@ export function Auth() {
           password,
         });
         if (error) throw error;
-        // Optionally show a message to check email for confirmation
-        alert('Cadastro realizado! Se o projeto exigir confirmação de e-mail, verifique sua caixa de entrada.');
+        alert('Conta de administrador criada com sucesso! Faça o login agora.');
+        setIsLogin(true);
       }
     } catch (error: any) {
       setError(error.message || 'Ocorreu um erro durante a autenticação.');
@@ -53,7 +53,7 @@ export function Auth() {
         {/* Auth Card */}
         <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
           <h2 className="text-xl font-semibold text-white mb-6">
-            {isLogin ? 'Entrar na sua conta' : 'Criar nova conta'}
+            {isLogin ? 'Entrar na sua conta' : 'Criar Conta Administrador'}
           </h2>
 
           {error && (
@@ -102,26 +102,39 @@ export function Auth() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {isLogin ? 'Entrando...' : 'Criando conta...'}
+                  {isLogin ? 'Entrando...' : 'Criando...'}
                 </>
               ) : (
-                isLogin ? 'Entrar' : 'Criar Conta'
+                isLogin ? 'Entrar' : 'Criar Conta Admin'
               )}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError(null);
-              }}
-              className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
-            >
-              {isLogin
-                ? 'Não tem uma conta? Cadastre-se'
-                : 'Já tem uma conta? Faça login'}
-            </button>
+            {isLogin ? (
+              <p className="text-sm text-slate-400">
+                O acesso é restrito. <br/>
+                <button 
+                  onClick={() => {
+                    setIsLogin(false);
+                    setError(null);
+                  }} 
+                  className="text-blue-400 hover:text-blue-300 mt-2 underline"
+                >
+                  Criar minha conta de Administrador
+                </button>
+              </p>
+            ) : (
+              <button 
+                onClick={() => {
+                  setIsLogin(true);
+                  setError(null);
+                }} 
+                className="text-sm text-slate-400 hover:text-white"
+              >
+                Voltar para o Login
+              </button>
+            )}
           </div>
         </div>
       </div>
