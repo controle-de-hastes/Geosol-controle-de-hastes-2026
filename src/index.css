@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* 
    The user prefers the absolute original look. 
    I will clear all my previous manual overrides in index.css 
