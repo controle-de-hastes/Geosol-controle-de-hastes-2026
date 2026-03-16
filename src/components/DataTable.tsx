@@ -281,9 +281,33 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
     },
   });
 
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+
   return (
     <div className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-full overflow-hidden">
-      <div className="overflow-auto flex-1 relative">
+      <div 
+        className="overflow-auto flex-1 relative focus:outline-none" 
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (!selectedRowId) return;
+          const rows = table.getRowModel().rows;
+          const currentIndex = rows.findIndex(r => r.id === selectedRowId);
+          
+          if (e.key === 'ArrowDown' && currentIndex < rows.length - 1) {
+            e.preventDefault();
+            const nextId = rows[currentIndex + 1].id;
+            setSelectedRowId(nextId);
+            const nextRow = e.currentTarget.querySelector(`tr[data-row-id="${nextId}"]`) as HTMLElement;
+            if (nextRow) nextRow.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+            e.preventDefault();
+            const prevId = rows[currentIndex - 1].id;
+            setSelectedRowId(prevId);
+            const prevRow = e.currentTarget.querySelector(`tr[data-row-id="${prevId}"]`) as HTMLElement;
+            if (prevRow) prevRow.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          }
+        }}
+      >
         <table className="w-full text-sm text-left border-collapse">
           <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -312,15 +336,30 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
             ))}
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors group">
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className={`px-5 ${density === 'compact' ? 'py-2' : 'py-4'} whitespace-nowrap align-middle`}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {table.getRowModel().rows.map((row) => {
+              const isSelected = row.id === selectedRowId;
+              return (
+                <tr 
+                  key={row.id} 
+                  data-row-id={row.id}
+                  onClick={(e) => {
+                    setSelectedRowId(row.id);
+                    e.currentTarget.closest('div[tabIndex]')?.focus();
+                  }}
+                  className={`transition-colors group cursor-pointer ${
+                    isSelected 
+                      ? 'bg-blue-50/80 dark:bg-blue-900/40 ring-1 ring-inset ring-blue-500/50' 
+                      : 'hover:bg-slate-50/50 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className={`px-5 ${density === 'compact' ? 'py-2' : 'py-4'} whitespace-nowrap align-middle`}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
             {table.getRowModel().rows.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-12 text-center">
