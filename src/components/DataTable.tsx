@@ -8,7 +8,7 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { ComputedOrder, Order } from '../types';
-import { ArrowUpDown, Edit2, Calendar, Package, User, Hash } from 'lucide-react';
+import { ArrowUpDown, Edit2, Calendar, Package, User, Hash, Ruler } from 'lucide-react';
 
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends import('@tanstack/react-table').RowData> {
@@ -29,32 +29,13 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
   const columns: ColumnDef<ComputedOrder>[] = [
     { 
       accessorKey: 'cc', 
-      header: () => <div className="flex items-center justify-center gap-1.5"><Hash className="w-3.5 h-3.5" /> Centro Custo</div>,
+      header: () => <div className="flex flex-col items-center leading-tight"><span>Centro</span><span>Custo</span></div>,
       cell: (info) => <div className="text-center font-mono text-sm font-medium text-slate-500">{info.getValue() as string}</div>
     },
-    {
-      accessorKey: 'status',
-      header: () => <div className="text-center">Status</div>,
-      cell: (info) => {
-        const status = info.getValue() as string;
-        return (
-          <div className="flex justify-center">
-            <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                status === 'ATENDIDO'
-                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                  : 'bg-amber-50 text-amber-600 border border-amber-100'
-              }`}
-            >
-              {status}
-            </span>
-          </div>
-        );
-      },
-    },
+
     { 
       accessorKey: 'cliente', 
-      header: () => <div className="flex items-center justify-center gap-1.5"><User className="w-3.5 h-3.5" /> Cliente</div>,
+      header: () => <div className="text-center">Cliente</div>,
       cell: (info) => <div className="text-center font-medium text-slate-900">{info.getValue() as string}</div>
     },
     { 
@@ -64,7 +45,7 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
     },
     { 
       accessorKey: 'produto', 
-      header: () => <div className="flex items-center justify-center gap-1.5"><Package className="w-3.5 h-3.5" /> Produto</div>,
+      header: () => <div className="text-center">Produto</div>,
       cell: (info) => <div className="text-center text-slate-600">{info.getValue() as string}</div>
     },
     { 
@@ -73,14 +54,35 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
       cell: (info) => <div className="text-center">{info.getValue() as string}</div>
     },
     { 
-      accessorKey: 'sonda', 
-      header: () => <div className="text-center">Sonda</div>,
-      cell: (info) => <div className="text-center">{info.getValue() as string}</div>
+      accessorKey: 'tag', 
+      header: () => <div className="text-center">TAG</div>,
+      cell: (info) => {
+        const order = info.row.original;
+        const tooltip = `Sonda: ${order.descricao_sonda || '-'}\nModelo: ${order.modelo || '-'}`;
+        return (
+          <div className="text-center">
+            <span 
+              className="text-xs font-semibold text-slate-700 cursor-help border-b border-dotted border-slate-300 hover:text-blue-600 transition-colors"
+              title={tooltip}
+            >
+              {info.getValue() as string || order.sonda || '-'}
+            </span>
+          </div>
+        );
+      }
     },
     {
       accessorKey: 'qtdSolicitada',
-      header: () => <div className="text-center">Qtd Solicitada</div>,
+      header: () => <div className="flex flex-col items-center leading-tight"><span>Qtd</span><span>Solicitada</span></div>,
       cell: (info) => <div className="text-center font-semibold text-slate-900">{info.getValue() as number}</div>,
+    },
+    {
+      accessorKey: 'profundidadeFuro',
+      header: () => <div className="flex flex-col items-center leading-tight"><span>Profund.</span><span>(m)</span></div>,
+      cell: (info) => {
+        const val = info.getValue() as number | undefined;
+        return <div className="text-center font-medium text-slate-600">{val ? val : '-'}</div>;
+      },
     },
     {
       accessorKey: 'qtdAtendida',
@@ -184,7 +186,7 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
     },
     {
       accessorKey: 'dataNecessidade',
-      header: () => <div className="flex items-center justify-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Data Necessidade</div>,
+      header: () => <div className="flex flex-col items-center leading-tight"><span>Data</span><span>Necessidade</span></div>,
       cell: (info) => {
         const date = new Date(info.getValue() as string);
         return <div className="text-center text-slate-500 text-sm">{date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>;
@@ -192,7 +194,7 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
     },
     {
       accessorKey: 'dataAtendimentoInicio',
-      header: () => <div className="text-center">Atend. Início</div>,
+      header: () => <div className="flex flex-col items-center leading-tight"><span>Atend.</span><span>Início</span></div>,
       cell: ({ getValue, row: { original }, column: { id }, table }) => {
         const initialValue = getValue() as string | null;
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -223,7 +225,7 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
     },
     {
       accessorKey: 'dataAtendimentoFinal',
-      header: () => <div className="text-center">Atend. Final</div>,
+      header: () => <div className="flex flex-col items-center leading-tight"><span>Atend.</span><span>Final</span></div>,
       cell: ({ getValue, row: { original }, column: { id }, table }) => {
         const initialValue = getValue() as string | null;
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -248,6 +250,26 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
               onBlur={onBlur}
               className="bg-transparent border-none text-sm text-slate-500 focus:ring-0 p-0 cursor-pointer hover:text-blue-600 transition-colors text-center"
             />
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: () => <div className="text-center">Status</div>,
+      cell: (info) => {
+        const status = info.getValue() as string;
+        return (
+          <div className="flex justify-center">
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                status === 'ATENDIDO'
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  : 'bg-amber-50 text-amber-600 border border-amber-100'
+              }`}
+            >
+              {status}
+            </span>
           </div>
         );
       },
@@ -315,7 +337,7 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className={`px-4 ${density === 'compact' ? 'py-2' : 'py-4'} font-bold text-slate-500 dark:text-slate-400 uppercase text-xs tracking-widest whitespace-nowrap select-none group text-center`}
+                    className={`px-4 ${density === 'compact' ? 'py-2' : 'py-3'} font-bold text-slate-500 dark:text-slate-400 uppercase text-xs tracking-widest select-none group text-center`}
                   >
                     {header.isPlaceholder ? null : (
                       <div
@@ -343,6 +365,9 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard' }
                   key={row.id} 
                   data-row-id={row.id}
                   onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    // Se clicou em um input/select/button não roubar o foco do elemento
+                    if (target.closest('input, select, button')) return;
                     setSelectedRowId(row.id);
                     e.currentTarget.closest('div[tabIndex]')?.focus();
                   }}

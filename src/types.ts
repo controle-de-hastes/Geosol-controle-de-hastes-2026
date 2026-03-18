@@ -1,5 +1,7 @@
 export type System = 'Norte' | 'Sul';
-export type Category = 'Hastes Novas' | 'Hastes Usadas' | 'Hastes Recuperadas' | 'Revestimentos HW';
+export type Category = 'Hastes Novas' | 'Hastes Usadas' | 'Hastes Recuperadas' | 'Revestimentos HW' | 'Revestimentos NW';
+export type ViewMode = 'management' | 'history';
+export type HistorySubgroup = 'sondas' | 'clientes' | 'cc' | 'sistema' | 'eventos';
 
 export interface Order {
   id: string;
@@ -7,7 +9,7 @@ export interface Order {
   cc: string; // Centro de Custo
   cliente: string;
   sistema: System;
-  sonda: string;
+  sonda: string; // This will store the Equipamento code (Tag)
   produto: string;
   qtdSolicitada: number;
   qtdAtendida: number;
@@ -15,6 +17,10 @@ export interface Order {
   dataAtendimentoInicio: string | null; // ISO date string or null
   dataAtendimentoFinal: string | null; // ISO date string or null
   categoria: Category;
+  profundidadeFuro?: number;
+  tag?: string; // We'll keep this as a duplicate for now to avoid breaking changes, but prefer 'sonda' for the equipment code
+  modelo?: string;
+  descricao_sonda?: string;
 }
 
 export interface ComputedOrder extends Order {
@@ -36,4 +42,18 @@ export interface Profile {
   full_name?: string | null;
   role: 'admin' | 'user';
   created_at?: string;
+}
+
+export interface SondaHistorico {
+  id: string;
+  sonda: string;
+  data_atendimento: string;
+  pedido_id?: string;
+  produto?: string;
+  cc?: string;
+  cliente?: string;
+  qtd_atendida?: number;
+  user_name?: string;
+  created_at?: string;
+  descricao_sonda?: string;
 }

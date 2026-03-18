@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ReactNode } from 'react';
-import { Category, Profile } from '../types';
+import { Category, Profile, ViewMode, HistorySubgroup } from '../types';
 import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield, FileSpreadsheet } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { supabase } from '../lib/supabase';
@@ -17,6 +17,10 @@ interface TopBarProps {
   profile: Profile | null;
   exportData?: ExportOrder[];
   isOnline: boolean;
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
+  activeHistorySubgroup: HistorySubgroup;
+  setHistorySubgroup: (sub: HistorySubgroup) => void;
 }
 
 export function TopBar({ 
@@ -30,14 +34,20 @@ export function TopBar({
   profile,
   exportData,
   isOnline,
+  viewMode,
+  setViewMode,
+  activeHistorySubgroup,
+  setHistorySubgroup,
 }: TopBarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isHastesOpen, setIsHastesOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   const actionsRef = useRef<HTMLDivElement>(null);
   const hastesRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,6 +57,9 @@ export function TopBar({
       }
       if (hastesRef.current && !hastesRef.current.contains(event.target as Node)) {
         setIsHastesOpen(false);
+      }
+      if (historyRef.current && !historyRef.current.contains(event.target as Node)) {
+        setIsHistoryOpen(false);
       }
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
@@ -61,6 +74,7 @@ export function TopBar({
     { id: 'Hastes Usadas', label: 'Hastes Usadas' },
     { id: 'Hastes Recuperadas', label: 'Hastes Recuperadas' },
     { id: 'Revestimentos HW', label: 'Revestimentos HW' },
+    { id: 'Revestimentos NW', label: 'Revestimentos NW' },
   ];
 
   const isHastesActive = hastesCategories.some(cat => cat.id === activeCategory);
@@ -85,11 +99,12 @@ export function TopBar({
       <nav className="flex items-center gap-2 mx-4 flex-1">
         <button
           onClick={() => {
+            setViewMode('management');
             setActiveCategory('Geral');
             setIsHastesOpen(false);
           }}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            activeCategory === 'Geral'
+            viewMode === 'management' && activeCategory === 'Geral'
               ? 'bg-blue-600/10 text-blue-400'
               : 'hover:bg-slate-800 hover:text-white text-slate-400'
           }`}
@@ -101,9 +116,12 @@ export function TopBar({
         {/* Hastes Dropdown */}
         <div className="relative" ref={hastesRef}>
           <button
-            onClick={() => setIsHastesOpen(!isHastesOpen)}
+            onClick={() => {
+              setViewMode('management');
+              setIsHastesOpen(!isHastesOpen);
+            }}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              isHastesActive
+              viewMode === 'management' && isHastesActive
                 ? 'bg-blue-600/10 text-blue-400'
                 : 'hover:bg-slate-800 hover:text-white text-slate-400'
             }`}
@@ -131,6 +149,97 @@ export function TopBar({
                   {cat.label}
                 </button>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Histórico Dropdown */}
+        <div className="relative" ref={historyRef}>
+          <button
+            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              viewMode === 'history'
+                ? 'bg-blue-600/10 text-blue-400'
+                : 'hover:bg-slate-800 hover:text-white text-slate-400'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 shrink-0" />
+            <span>Histórico</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isHistoryOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isHistoryOpen && (
+            <div className="absolute left-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2">
+              <button
+                onClick={() => {
+                  setViewMode('history');
+                  setHistorySubgroup('sondas');
+                  setIsHistoryOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                  viewMode === 'history' && activeHistorySubgroup === 'sondas'
+                    ? 'bg-blue-600/20 text-blue-400'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                Sondas
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('history');
+                  setHistorySubgroup('clientes');
+                  setIsHistoryOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                  viewMode === 'history' && activeHistorySubgroup === 'clientes'
+                    ? 'bg-blue-600/20 text-blue-400'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                Clientes
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('history');
+                  setHistorySubgroup('cc');
+                  setIsHistoryOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                  viewMode === 'history' && activeHistorySubgroup === 'cc'
+                    ? 'bg-blue-600/20 text-blue-400'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                Centro de Custo
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('history');
+                  setHistorySubgroup('sistema');
+                  setIsHistoryOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                  viewMode === 'history' && activeHistorySubgroup === 'sistema'
+                    ? 'bg-blue-600/20 text-blue-400'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                Sistema
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('history');
+                  setHistorySubgroup('eventos');
+                  setIsHistoryOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                  viewMode === 'history' && activeHistorySubgroup === 'eventos'
+                    ? 'bg-blue-600/20 text-blue-400'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                Log de Eventos
+              </button>
             </div>
           )}
         </div>

@@ -2,15 +2,17 @@ import { useState, useRef, ChangeEvent, DragEvent } from 'react';
 import { X, Upload, Download, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Order, System, Category } from '../types';
-import { downloadExcelTemplate } from '../lib/excelUtils';
+import { downloadExcelTemplate, extractRodLength, inferCategoryFromProduct } from '../lib/excelUtils';
+import { SONDAS } from '../constants';
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (orders: Order[]) => void;
+  onImport: (orders: Order[]) => Promise<void>;
+  data: Order[];
 }
 
-export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
+export function ImportModal({ isOpen, onClose, onImport, data }: ImportModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,10 +28,10 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        const fileData = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
         
         // Get first sheet
         const sheetName = workbook.SheetNames[0];
@@ -44,46 +46,71 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
         }
 
         const orders: Order[] = jsonData.map((row: any, index) => {
-          const codigo = row['Código']?.toString().trim();
-          const cc = row['Centro Custo']?.toString().trim();
-          const cliente = row['Cliente']?.toString().trim();
-          const sonda = row['Sonda']?.toString().trim();
-          const produto = row['Produto']?.toString().trim();
-          const qtdSolicitada = parseInt(row['Qtd Solicitada'], 10);
+          const codigo = row['Código']?.toString().trim() || `PED-IMP-${Math.floor(Math.random() * 1000)}`;
+          const produto = row['Produto']?.toString().trim() || 'PRODUTO NÃO INFORMADO';
+          const qtdSolicitada = Number(row['Qtd Solicitada']) || 0;
+          const qtdAtendida = Number(row['Qtd Atendida']) || 0;
           
           // Normalize Sistema: accept Norte/Sul/norte/sul/NORTE/SUL
-          const sistemaRaw = row['Sistema']?.toString().trim();
-          const sistemaLower = sistemaRaw?.toLowerCase();
-          let sistema: System;
-          if (sistemaLower === 'norte') sistema = 'Norte';
-          else if (sistemaLower === 'sul') sistema = 'Sul';
-          else sistema = sistemaRaw as System;
+          const sistemaRaw = row['Sistema']?.toString().trim()?.toLowerCase();
 
-          // Handle potentially different date formats in Excel
-          let dataNecessidade = row['Data Necessidade'];
-          if (dataNecessidade instanceof Date) {
-            dataNecessidade = dataNecessidade.toISOString().split('T')[0];
-          } else {
-            dataNecessidade = dataNecessidade?.toString().trim();
+          // Helper to parse dates from Excel/JSON
+          const parseDate = (val: any) => {
+            if (!val) return null;
+            if (val instanceof Date) return val.toISOString().split('T')[0];
+            const str = val.toString().trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+            // Attempt to handle DD/MM/YYYY
+            const parts = str.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+            if (parts) return `${parts[3]}-${parts[2]}-${parts[1]}`;
+            return str;
+          };
+
+          let dataNecessidade = parseDate(row['Data Necessidade']);
+          if (!dataNecessidade) {
+            dataNecessidade = new Date().toISOString().split('T')[0];
           }
+          const dataAtendimentoInicio = parseDate(row['Data Atend. Início']);
+          const dataAtendimentoFinal = parseDate(row['Data Atend. Final']);
 
-          // Normalize Categoria: case-insensitive match
-          const categoriaRaw = row['Categoria']?.toString().trim();
-          const validCategories = ['Hastes Novas', 'Hastes Usadas', 'Hastes Recuperadas', 'Revestimentos HW'];
+          // Normalize Categoria: case-insensitive match or infer from product
+          const categoriaRaw = row['Categoria']?.toString().trim() || inferCategoryFromProduct(produto);
+          const validCategories = ['Hastes Novas', 'Hastes Usadas', 'Hastes Recuperadas', 'Revestimentos HW', 'Revestimentos NW'];
           const categoriaMatch = validCategories.find(c => c.toLowerCase() === categoriaRaw?.toLowerCase());
-          const categoria = (categoriaMatch || categoriaRaw) as Category;
+          const categoria = (categoriaMatch || 'Hastes Novas') as Category;
 
-          if (!codigo || !cc || !cliente || !sistema || !produto || isNaN(qtdSolicitada) || !dataNecessidade || !categoria) {
-            throw new Error(`Linha ${index + 2}: Dados incompletos ou inválidos. (Verifique: Código, CC, Cliente, Sistema, Produto, Qtd, Data e Categoria)`);
-          }
+          // Skip entirely empty rows
+          const isEmptyRow = !row['Código'] && !row['Centro Custo'] && !row['Cliente'] && !row['Sistema'] && !row['Sonda'] && !row['Produto'] && !row['Qtd Solicitada'] && !row['Data Necessidade'] && !row['Categoria'];
+          if (isEmptyRow) return null as any;
 
-          if (sistema !== 'Norte' && sistema !== 'Sul') {
-            throw new Error(`Linha ${index + 2}: Sistema inválido. Use 'Norte' ou 'Sul' (linha informou: '${sistemaRaw}').`);
-          }
+          const sondaRaw = (row['Sonda'] || row['Equipamento'] || row['Equip'] || '').toString().trim();
+          const tagRaw = (row['Tag'] || row['TAG'] || row['Equipamento'] || '').toString().trim();
+          
+          const foundSonda = SONDAS.find(s => 
+            (tagRaw && s.tag.toUpperCase() === tagRaw.toUpperCase()) || 
+            (sondaRaw && s.descricao.toUpperCase() === sondaRaw.toUpperCase()) ||
+            (sondaRaw && s.tag.toUpperCase() === sondaRaw.toUpperCase())
+          );
 
-          if (!categoriaMatch) {
-            throw new Error(`Linha ${index + 2}: Categoria inválida. Use '${validCategories.join("', '")}'.`);
+          // O banco de dados e a interface esperam que "sonda" guarde a TAG 
+          // (para cruzar com SONDAS e histórico corretamente).
+          const tag = foundSonda?.tag || tagRaw || sondaRaw || '';
+          const sonda = tag;
+          const modelo = foundSonda?.modelo || row['Modelo']?.toString().trim() || '';
+          const descricao_sonda = foundSonda?.descricao || (sondaRaw !== tag ? sondaRaw : '');
+
+          // Look for the most recent data for this TAG to auto-fill missing fields
+          // Se newData tem apenas a TAG preenchida, tentamos puxar CC, Cliente e Sistema da base.
+          const recentOrder = data.find((o: Order) => o.tag === tag || o.sonda === tag);
+
+          const cc = row['Centro Custo']?.toString().trim() || recentOrder?.cc || 'NÃO INF.';
+          const cliente = row['Cliente']?.toString().trim() || recentOrder?.cliente || 'NÃO INFORMADO';
+          
+          let sistemaParsed = undefined;
+          if (sistemaRaw === 'sul' || sistemaRaw === 'norte') {
+             sistemaParsed = sistemaRaw === 'sul' ? 'Sul' : 'Norte';
           }
+          const sistema = sistemaParsed || recentOrder?.sistema || 'Norte';
 
           return {
             id: `ORD-IMP-${Math.floor(Math.random() * 100000)}`,
@@ -92,19 +119,28 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
             cliente,
             sistema,
             sonda,
+            tag,
+            modelo,
+            descricao_sonda,
             produto,
             qtdSolicitada,
-            qtdAtendida: 0,
+            qtdAtendida,
             dataNecessidade,
-            dataAtendimentoInicio: null,
-            dataAtendimentoFinal: null,
+            dataAtendimentoInicio,
+            dataAtendimentoFinal,
             categoria,
+            profundidadeFuro: Number(row['Profundidade'] || row['Profund.']) || (() => {
+               const rodLength = extractRodLength(produto);
+               return rodLength ? qtdSolicitada * rodLength : undefined;
+            })(),
           };
-        });
+        }).filter(order => order !== null);
 
-        onImport(orders);
+        console.log(`Mapeados ${orders.length} pedidos. Iniciando importação...`);
+        await onImport(orders);
         onClose();
       } catch (err: any) {
+        console.error('Erro detalhado da importação:', err);
         setError(err.message || 'Erro ao processar o arquivo. Verifique se o formato está correto.');
       }
     };

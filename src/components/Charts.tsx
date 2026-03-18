@@ -16,13 +16,17 @@ export function Charts({ data }: ChartsProps) {
       // Aggregate by Sonda for the specific client
       const filtered = data.filter(d => d.cliente === selectedClient);
       const aggregated = filtered.reduce((acc, order) => {
-        const existing = acc.find((item) => item.label === order.sonda);
+        const label = order.tag && order.tag !== order.sonda 
+          ? `${order.tag} - ${order.sonda}`
+          : (order.tag || order.sonda || 'Não Informada');
+          
+        const existing = acc.find((item) => item.label === label);
         if (existing) {
           existing.solicitado += order.qtdSolicitada;
           existing.atendido += order.qtdAtendida;
         } else {
           acc.push({
-            label: order.sonda,
+            label,
             solicitado: order.qtdSolicitada,
             atendido: order.qtdAtendida,
           });

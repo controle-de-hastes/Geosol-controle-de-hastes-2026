@@ -8,11 +8,12 @@ import { NewOrderModal } from './components/NewOrderModal';
 import { ImportModal } from './components/ImportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { Auth } from './components/Auth';
+import { HistoryDashboard } from './components/HistoryDashboard';
 import { supabase } from './lib/supabase';
 import { initialData } from './data';
-import { Order, ComputedOrder, Category, System, HistoryEvent } from './types';
+import { Order, ComputedOrder, Category, System, HistoryEvent, ViewMode, HistorySubgroup } from './types';
 import { Session } from '@supabase/supabase-js';
-import { Profile } from './types';
+import { Profile, SondaHistorico } from './types';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -21,6 +22,7 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(true);
   const [data, setData] = useState<Order[]>([]);
   const [history, setHistory] = useState<HistoryEvent[]>([]);
+  const [sondaHistorico, setSondaHistorico] = useState<SondaHistorico[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'Geral'>('Geral');
   const [searchTerm, setSearchTerm] = useState('');
   const [systemFilter, setSystemFilter] = useState<System | 'Todos'>('Todos');
@@ -31,6 +33,8 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('management');
+  const [activeHistorySubgroup, setActiveHistorySubgroup] = useState<HistorySubgroup>('sondas');
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('geosol_theme') as 'light' | 'dark' | 'system') || 'light';
   });
@@ -91,7 +95,11 @@ export default function App() {
         dataNecessidade: o.data_necessidade,
         dataAtendimentoInicio: o.data_atendimento_inicio,
         dataAtendimentoFinal: o.data_atendimento_final,
-        categoria: o.categoria
+        categoria: o.categoria,
+        profundidadeFuro: o.profundidade_furo,
+        tag: o.tag,
+        modelo: o.modelo,
+        descricao_sonda: o.descricao_sonda,
       }));
 
       setData(mappedOrders);
@@ -111,6 +119,43 @@ export default function App() {
       setHistory(dbEvents as HistoryEvent[]);
     } catch (err) {
       console.error('Erro ao buscar histórico:', err);
+    }
+  };
+
+  const fetchSondaHistorico = async () => {
+    try {
+      const { data: rows, error } = await supabase
+        .from('sonda_historico')
+        .select('*')
+        .order('data_atendimento', { ascending: false });
+      if (error) throw error;
+      setSondaHistorico(rows as SondaHistorico[]);
+    } catch (err) {
+      console.error('Erro ao buscar histórico de sondas:', err);
+    }
+  };
+
+  const recordSondaAtendimento = async (order: Order) => {
+    if (!order.sonda || !order.sonda.trim()) return;
+    const today = new Date().toISOString().split('T')[0];
+    const userName = profile?.full_name || profile?.email || 'Sistema';
+    const entry = {
+      sonda: order.sonda.trim(),
+      data_atendimento: today,
+      pedido_id: order.id,
+      produto: order.produto,
+      cc: order.cc,
+      cliente: order.cliente,
+      qtd_atendida: order.qtdAtendida,
+      user_name: userName,
+      descricao_sonda: order.descricao_sonda,
+    };
+    try {
+      const { data: inserted, error } = await supabase.from('sonda_historico').insert([entry]).select();
+      if (error) throw error;
+      if (inserted) setSondaHistorico(prev => [inserted[0] as SondaHistorico, ...prev]);
+    } catch (err) {
+      console.error('Erro ao registrar histórico de sonda:', err);
     }
   };
 
@@ -167,6 +212,7 @@ export default function App() {
         loadProfile(session.user.id);
         fetchOrders();
         fetchHistory();
+        fetchSondaHistorico();
       } else {
         setIsLoadingAuth(false);
       }
@@ -180,6 +226,7 @@ export default function App() {
         loadProfile(session.user.id).finally(() => setIsLoadingAuth(false));
         fetchOrders();
         fetchHistory();
+        fetchSondaHistorico();
       } else {
         setProfile(null);
         setIsLoadingAuth(false);
@@ -211,8 +258,39 @@ export default function App() {
         },
         (payload) => {
           console.log('Change received!', payload);
-          // Re-fetch everything to ensure consistency
-          fetchOrders();
+
+          const mapRow = (o: any): Order => ({
+            id: o.id,
+            codigo: o.codigo,
+            cc: o.cc,
+            cliente: o.cliente,
+            sistema: o.sistema,
+            sonda: o.sonda,
+            produto: o.produto,
+            qtdSolicitada: o.qtd_solicitada,
+            qtdAtendida: o.qtd_atendida,
+            dataNecessidade: o.data_necessidade,
+            dataAtendimentoInicio: o.data_atendimento_inicio,
+            dataAtendimentoFinal: o.data_atendimento_final,
+            categoria: o.categoria,
+            profundidadeFuro: o.profundidade_furo,
+            tag: o.tag,
+            modelo: o.modelo,
+            descricao_sonda: o.descricao_sonda,
+          });
+
+          if (payload.eventType === 'INSERT') {
+            const newOrder = mapRow(payload.new);
+            setData(prev => {
+              if (prev.some(r => r.id === newOrder.id)) return prev;
+              return [newOrder, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapRow(payload.new);
+            setData(prev => prev.map(r => r.id === updated.id ? updated : r));
+          } else if (payload.eventType === 'DELETE') {
+            setData(prev => prev.filter(r => r.id !== payload.old.id));
+          }
         }
       )
       .on(
@@ -312,7 +390,8 @@ export default function App() {
       else {
         // Map common camelCase to snake_case for standard fields if needed
         const mapping: Record<string, string> = {
-          dataNecessidade: 'data_necessidade'
+          dataNecessidade: 'data_necessidade',
+          profundidadeFuro: 'profundidade_furo'
         };
         dbUpdates[mapping[columnId] || columnId] = value;
       }
@@ -320,12 +399,18 @@ export default function App() {
       const { error } = await supabase.from('orders').update(dbUpdates).eq('id', id);
       if (error) throw error;
 
+      const updatedRow = { ...row, ...updates };
       setData((old) =>
         old.map((r) => {
-          if (r.id === id) return { ...r, ...updates };
+          if (r.id === id) return updatedRow;
           return r;
         })
       );
+
+      // Se atualizou qtdAtendida, registrar no histórico de sonda
+      if (columnId === 'qtdAtendida' && Number(value) > 0 && row.sonda && row.sonda.trim()) {
+        await recordSondaAtendimento(updatedRow);
+      }
       addHistory(`Pedido ${id} atualizado (${columnId}).`, 'UPDATE');
     } catch (err) {
       console.error('Erro ao atualizar no banco:', err);
@@ -347,7 +432,11 @@ export default function App() {
         data_necessidade: newOrder.dataNecessidade,
         data_atendimento_inicio: newOrder.dataAtendimentoInicio,
         data_atendimento_final: newOrder.dataAtendimentoFinal,
-        categoria: newOrder.categoria
+        categoria: newOrder.categoria,
+        profundidade_furo: newOrder.profundidadeFuro,
+        tag: newOrder.tag,
+        modelo: newOrder.modelo,
+        descricao_sonda: newOrder.descricao_sonda,
       };
 
       const { error } = await supabase.from('orders').insert([dbOrder]);
@@ -375,16 +464,43 @@ export default function App() {
         data_necessidade: o.dataNecessidade,
         data_atendimento_inicio: o.dataAtendimentoInicio,
         data_atendimento_final: o.dataAtendimentoFinal,
-        categoria: o.categoria
+        categoria: o.categoria,
+        profundidade_furo: o.profundidadeFuro,
+        tag: o.tag,
+        modelo: o.modelo,
+        descricao_sonda: o.descricao_sonda,
       }));
 
       const { error } = await supabase.from('orders').insert(dbOrders);
       if (error) throw error;
 
+      // Import attended items into history
+      const historyRecords = newOrders
+        .filter(o => o.qtdAtendida > 0)
+        .map(o => ({
+          sonda: o.sonda,
+          descricao_sonda: o.descricao_sonda,
+          pedido_id: o.id,
+          produto: o.produto,
+          cc: o.cc,
+          cliente: o.cliente,
+          qtd_atendida: o.qtdAtendida,
+          data_atendimento: o.dataAtendimentoFinal || o.dataAtendimentoInicio || new Date().toISOString().split('T')[0],
+          user_name: profile?.full_name || 'Sistema (Importação)'
+        }));
+
+      if (historyRecords.length > 0) {
+        const { error: histError } = await supabase.from('sonda_historico').insert(historyRecords);
+        if (histError) console.error('Erro ao importar historico:', histError);
+        else fetchSondaHistorico();
+      }
+
       setData((prev) => [...newOrders, ...prev]);
       addHistory(`${newOrders.length} pedidos importados via planilha.`, 'IMPORT');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao importar pedidos no banco:', err);
+      alert(`Erro ao salvar pedidos: ${err.message || 'Erro desconhecido'}`);
+      throw err; // Re-throw para o modal tratar se necessário
     }
   };
 
@@ -403,7 +519,8 @@ export default function App() {
         data_necessidade: o.dataNecessidade,
         data_atendimento_inicio: o.dataAtendimentoInicio,
         data_atendimento_final: o.dataAtendimentoFinal,
-        categoria: o.categoria
+        categoria: o.categoria,
+        profundidade_furo: o.profundidadeFuro
       }));
 
       const { error } = await supabase.from('orders').upsert(dbOrders);
@@ -431,7 +548,11 @@ export default function App() {
         data_necessidade: updatedOrder.dataNecessidade,
         data_atendimento_inicio: updatedOrder.dataAtendimentoInicio,
         data_atendimento_final: updatedOrder.dataAtendimentoFinal,
-        categoria: updatedOrder.categoria
+        categoria: updatedOrder.categoria,
+        profundidade_furo: updatedOrder.profundidadeFuro,
+        tag: updatedOrder.tag,
+        modelo: updatedOrder.modelo,
+        descricao_sonda: updatedOrder.descricao_sonda,
       };
 
       const { error } = await supabase.from('orders').update(dbOrder).eq('id', updatedOrder.id);
@@ -462,6 +583,49 @@ export default function App() {
     } catch (err) {
       console.error('Erro ao limpar banco de dados:', err);
       alert('Houve um erro ao apagar os dados no servidor.');
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (!window.confirm('Tem certeza que deseja apagar todo o histórico de movimentação? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      // Use empty UUID for uuid fields to avoid conversion errors
+      const { error: histError } = await supabase.from('sonda_historico').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (histError) throw histError;
+
+      const { error: eventsError } = await supabase.from('history_events').delete().neq('id', 'placeholder');
+      if (eventsError) throw eventsError;
+
+      setSondaHistorico([]);
+      setHistory([]);
+      addHistory('Todo o histórico de movimentação foi apagado pelo usuário.', 'DELETE');
+    } catch (err) {
+      console.error('Erro ao limpar histórico:', err);
+      alert('Houve um erro ao apagar o histórico no servidor. Verifique se você tem permissão.');
+    }
+  };
+
+  const handleDeleteHistoryItem = async (id: string, type: 'event' | 'sonda') => {
+    if (!window.confirm('Tem certeza que deseja excluir este registro?')) {
+      return;
+    }
+
+    try {
+      const table = type === 'event' ? 'history_events' : 'sonda_historico';
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) throw error;
+
+      if (type === 'event') {
+        setHistory(prev => prev.filter(h => h.id !== id));
+      } else {
+        setSondaHistorico(prev => prev.filter(h => h.id !== id));
+      }
+    } catch (err) {
+      console.error('Erro ao excluir item do histórico:', err);
+      alert('Houve um erro ao apagar o registro no servidor.');
     }
   };
 
@@ -504,6 +668,10 @@ export default function App() {
           profile={profile}
           exportData={filteredData}
           isOnline={isOnline}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          activeHistorySubgroup={activeHistorySubgroup}
+          setHistorySubgroup={setActiveHistorySubgroup}
         />
         <FilterBar
           systemFilter={systemFilter}
@@ -523,41 +691,54 @@ export default function App() {
         <main className="flex-1 overflow-y-auto relative">
           <div className="relative z-10 flex flex-col p-4 sm:p-6 lg:p-8 min-h-full">
             <div className="max-w-[1600px] mx-auto w-full flex-1 flex flex-col space-y-6 lg:space-y-8">
-              <div className="shrink-0">
-                <h2 className="text-2xl font-bold text-white tracking-tight">
-                  {activeCategory === 'Geral' ? 'Visão Geral do Inventário' : activeCategory}
-                </h2>
-                <p className="text-sm text-slate-400 mt-1">
-                  Gerencie o fluxo logístico e o atendimento de pedidos de hastes.
-                </p>
-              </div>
+              {viewMode === 'management' ? (
+                <>
+                  <div className="shrink-0">
+                    <h2 className="text-2xl font-bold text-white tracking-tight">
+                      {activeCategory === 'Geral' ? 'Visão Geral do Inventário' : activeCategory}
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Gerencie o fluxo logístico e o atendimento de pedidos de hastes.
+                    </p>
+                  </div>
 
-              <div className="shrink-0">
-                <DashboardCards data={filteredData} />
-              </div>
-              
-              {activeCategory === 'Geral' && (
-                <div className="shrink-0">
-                  <Charts data={filteredData} />
-                </div>
+                  <div className="shrink-0">
+                    <DashboardCards data={filteredData} />
+                  </div>
+                  
+                  {activeCategory === 'Geral' && (
+                    <div className="shrink-0">
+                      <Charts data={filteredData} />
+                    </div>
+                  )}
+
+                  <div className="flex-1 flex flex-col min-h-[600px]">
+                    <div className="flex items-center justify-between mb-4 shrink-0 px-1">
+                      <h3 className="text-xl font-bold text-white">Tabela de Gestão</h3>
+                      <span className="text-sm text-slate-200 bg-slate-800/40 border border-slate-700/50 px-3 py-1.5 rounded-lg font-semibold backdrop-blur-sm">
+                        {filteredData.length} registros
+                      </span>
+                    </div>
+                    <div className="flex-1 overflow-hidden flex flex-col shadow-2xl shadow-slate-900/20 rounded-2xl">
+                      <DataTable 
+                        data={filteredData} 
+                        updateDataById={updateDataById} 
+                        onEdit={openEditModal}
+                        density={density}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <HistoryDashboard 
+                  activeSubgroup={activeHistorySubgroup}
+                  data={data}
+                  history={history}
+                  sondaHistorico={sondaHistorico}
+                  onClearHistory={handleClearHistory}
+                  onDeleteHistoryItem={handleDeleteHistoryItem}
+                />
               )}
-
-              <div className="flex-1 flex flex-col min-h-[600px]">
-                <div className="flex items-center justify-between mb-4 shrink-0 px-1">
-                  <h3 className="text-xl font-bold text-white">Tabela de Gestão</h3>
-                  <span className="text-sm text-slate-200 bg-slate-800/40 border border-slate-700/50 px-3 py-1.5 rounded-lg font-semibold backdrop-blur-sm">
-                    {filteredData.length} registros
-                  </span>
-                </div>
-                <div className="flex-1 overflow-hidden flex flex-col shadow-2xl shadow-slate-900/20 rounded-2xl">
-                  <DataTable 
-                    data={filteredData} 
-                    updateDataById={updateDataById} 
-                    onEdit={openEditModal}
-                    density={density}
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </main>
@@ -570,12 +751,15 @@ export default function App() {
         onEdit={handleEditOrder}
         defaultCategory={activeCategory}
         orderToEdit={orderToEdit}
+        data={data}
+        sondaHistorico={sondaHistorico}
       />
 
       <ImportModal 
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImport={handleImportOrders}
+        data={data}
       />
 
       <SettingsModal

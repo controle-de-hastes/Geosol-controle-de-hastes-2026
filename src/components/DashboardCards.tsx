@@ -43,7 +43,18 @@ export function DashboardCards({ data }: DashboardCardsProps) {
       />
       <Card
         title="Pendências por Sistema"
-        value={`${pendentesNorte} N / ${pendentesSul} S`}
+        value={
+          <div className="flex flex-col gap-1.5 text-lg mt-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0 shadow-sm"></span>
+              <span>{pendentesNorte.toLocaleString()} Norte</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0 shadow-sm"></span>
+              <span>{pendentesSul.toLocaleString()} Sul</span>
+            </div>
+          </div>
+        }
         icon={<MapPin className="w-5 h-5 text-blue-600" />}
         subtitle="Distribuição regional"
         color="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20"
@@ -66,7 +77,7 @@ export function DashboardCards({ data }: DashboardCardsProps) {
   );
 }
 
-function Card({ title, value, icon, subtitle, color }: { title: string; value: string | number; icon: ReactNode; subtitle: string; color: string }) {
+function Card({ title, value, icon, subtitle, color }: { title: string; value: ReactNode; icon: ReactNode; subtitle: string; color: string }) {
   return (
     <div className={`p-4 rounded-xl border ${color} shadow-sm flex flex-col`}>
       <div className="flex items-center justify-between mb-2">

@@ -6,16 +6,54 @@ export const TEMPLATE_HEADERS = [
   'Cliente',
   'Sistema',
   'Sonda',
+  'Tag',
+  'Modelo',
   'Produto',
   'Qtd Solicitada',
+  'Qtd Atendida',
   'Data Necessidade',
+  'Data Atend. Início',
+  'Data Atend. Final',
   'Categoria'
 ];
 
+/**
+ * Extracts rod length from product description (e.g., "3,00m", "1.50m")
+ */
+export const extractRodLength = (description: string): number | null => {
+  if (!description) return null;
+  // Procura padrões como "3,00M", "1.50M", "3M", "3 MT", "1,50 MT"
+  const match = description.match(/(\d+(?:[.,]\d+)?) ?(?:M|MT|METROS)\b/i);
+  if (match) {
+    return parseFloat(match[1].replace(',', '.'));
+  }
+  return null;
+};
+
+/**
+ * Infers category from product description if not provided
+ */
+export const inferCategoryFromProduct = (product: string): string => {
+  if (!product) return '';
+  const p = product.toUpperCase();
+  
+  if (p.includes('REVESTIMENTO')) {
+    if (p.includes('HW')) return 'Revestimentos HW';
+    if (p.includes('NW')) return 'Revestimentos NW';
+    return 'Revestimentos HW'; // Default for generic revestimento
+  }
+  
+  if (p.includes('RECUPERADA')) return 'Hastes Recuperadas';
+  if (p.includes('USADA')) return 'Hastes Usadas';
+  if (p.includes('HASTE') || p.includes('HQ') || p.includes('NQ')) return 'Hastes Novas';
+  
+  return '';
+};
+
 export const downloadExcelTemplate = () => {
   const exampleRows = [
-    ['PRD-001', '1020-00', 'CLIENTE EXEMPLO', 'Norte', 'SONDA-01', 'HASTE HQ 3M', '10', '2024-03-25', 'Hastes Novas'],
-    ['PRD-002', '1020-00', 'CLIENTE EXEMPLO', 'Sul', 'SONDA-02', 'HASTE NQ USADA', '5', '2024-03-26', 'Hastes Usadas']
+    ['PRD-001', '1020-00', 'CLIENTE EXEMPLO', 'Norte', 'SONDA 01', '2101', 'R-50', 'HASTE HQ 3M', '10', '2024-03-25', 'Hastes Novas'],
+    ['PRD-002', '1020-00', 'CLIENTE EXEMPLO', 'Sul', 'SONDA 02', '2102', 'MACH-700', 'HASTE NQ USADA', '5', '2024-03-26', 'Hastes Usadas']
   ];
 
   const wsData = [TEMPLATE_HEADERS, ...exampleRows];
@@ -40,6 +78,9 @@ export interface ExportOrder {
   dataAtendimentoInicio?: string;
   dataAtendimentoFinal?: string;
   categoria: string;
+  profundidadeFuro?: number;
+  tag?: string;
+  modelo?: string;
 }
 
 export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
@@ -49,6 +90,8 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     'Cliente',
     'Sistema',
     'Sonda',
+    'Tag',
+    'Modelo',
     'Produto',
     'Categoria',
     'Qtd Solicitada',
@@ -57,6 +100,7 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     'Data Necessidade',
     'Data Atend. Início',
     'Data Atend. Final',
+    'Profund. do Furo (m)'
   ];
 
   const rows = orders.map(o => [
@@ -65,6 +109,8 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     o.cliente,
     o.sistema,
     o.sonda,
+    o.tag || '',
+    o.modelo || '',
     o.produto,
     o.categoria,
     o.qtdSolicitada,
@@ -73,6 +119,7 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     o.dataNecessidade || '',
     o.dataAtendimentoInicio || '',
     o.dataAtendimentoFinal || '',
+    o.profundidadeFuro || '-'
   ]);
 
   const wsData = [headers, ...rows];
@@ -85,6 +132,8 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     { wch: 24 }, // Cliente
     { wch: 10 }, // Sistema
     { wch: 16 }, // Sonda
+    { wch: 15 }, // Tag
+    { wch: 25 }, // Modelo
     { wch: 30 }, // Produto
     { wch: 20 }, // Categoria
     { wch: 14 }, // Qtd Sol
@@ -93,6 +142,7 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     { wch: 18 }, // Data Nec
     { wch: 18 }, // Data Início
     { wch: 18 }, // Data Final
+    { wch: 18 }, // Profundidade do Furo
   ];
 
   const wb = XLSX.utils.book_new();
