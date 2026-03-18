@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Filter } from 'lucide-react';
-import { System } from '../types';
+import { System, ItemType } from '../types';
 
 interface FilterBarProps {
   systemFilter: System | 'Todos';
@@ -13,6 +13,8 @@ interface FilterBarProps {
   clientFilter: string;
   setClientFilter: (client: string) => void;
   availableClients: string[];
+  typeFilter: ItemType;
+  setTypeFilter: (type: ItemType) => void;
 }
 
 export function FilterBar({
@@ -26,6 +28,8 @@ export function FilterBar({
   clientFilter,
   setClientFilter,
   availableClients,
+  typeFilter,
+  setTypeFilter,
 }: FilterBarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
@@ -44,7 +48,8 @@ export function FilterBar({
     (systemFilter !== 'Todos' ? 1 : 0) + 
     (statusFilter !== 'Todos' ? 1 : 0) + 
     (sondaFilter !== 'Todos' ? 1 : 0) +
-    (clientFilter !== 'Todos' ? 1 : 0);
+    (clientFilter !== 'Todos' ? 1 : 0) +
+    (typeFilter !== 'Todas' ? 1 : 0);
 
   return (
     <div className="flex items-center justify-end px-6 pt-4 pb-2 sticky top-0 z-40 pointer-events-none">
@@ -75,6 +80,7 @@ export function FilterBar({
                       setStatusFilter('Todos'); 
                       setSondaFilter('Todos'); 
                       setClientFilter('Todos');
+                      setTypeFilter('Todas');
                     }}
                     className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                   >
@@ -83,6 +89,19 @@ export function FilterBar({
                 )}
               </div>
               
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tipo de Equipamento</label>
+                <select 
+                  value={typeFilter} 
+                  onChange={e => setTypeFilter(e.target.value as ItemType)} 
+                  className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="Todas">Hastes & Revestimentos</option>
+                  <option value="Hastes">Apenas Hastes</option>
+                  <option value="Revestimento">Apenas Revestimentos</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">Sistema</label>
                 <select 

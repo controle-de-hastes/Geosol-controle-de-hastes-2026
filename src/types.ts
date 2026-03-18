@@ -1,5 +1,6 @@
 export type System = 'Norte' | 'Sul';
 export type Category = 'Hastes Novas' | 'Hastes Usadas' | 'Hastes Recuperadas' | 'Revestimentos HW' | 'Revestimentos NW';
+export type ItemType = 'Todas' | 'Hastes' | 'Revestimento';
 export type ViewMode = 'management' | 'history';
 export type HistorySubgroup = 'sondas' | 'clientes' | 'cc' | 'sistema' | 'eventos';
 

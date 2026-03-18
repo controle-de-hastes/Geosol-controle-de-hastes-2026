@@ -29,6 +29,7 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState<'Todos' | 'PENDENTE' | 'ATENDIDO'>('Todos');
   const [sondaFilter, setSondaFilter] = useState<string>('Todos');
   const [clientFilter, setClientFilter] = useState<string>('Todos');
+  const [typeFilter, setTypeFilter] = useState<'Todas' | 'Hastes' | 'Revestimento'>('Todas');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -135,7 +136,7 @@ export default function App() {
     }
   };
 
-  const recordSondaAtendimento = async (order: Order) => {
+  const recordSondaAtendimento = useCallback(async (order: Order) => {
     if (!order.sonda || !order.sonda.trim()) return;
     const today = new Date().toISOString().split('T')[0];
     const userName = profile?.full_name || profile?.email || 'Sistema';
@@ -157,9 +158,9 @@ export default function App() {
     } catch (err) {
       console.error('Erro ao registrar histórico de sonda:', err);
     }
-  };
+  }, [profile]);
 
-  const addHistory = async (description: string, type: HistoryEvent['type']) => {
+  const addHistory = useCallback(async (description: string, type: HistoryEvent['type']) => {
     const userName = profile?.full_name || profile?.email || 'Sistema';
     const newEvent = {
         id: Math.random().toString(36).substr(2, 9),
@@ -185,7 +186,7 @@ export default function App() {
       // Fallback local
       setHistory(prev => [newEvent, ...prev]);
     }
-  };
+  }, [profile]);
 
   const loadProfile = async (userId: string) => {
     try {
@@ -340,6 +341,10 @@ export default function App() {
   const filteredData = useMemo(() => {
     const filtered = computedData.filter((order) => {
       const matchesCategory = activeCategory === 'Geral' || order.categoria === activeCategory;
+      const matchesType = 
+        typeFilter === 'Todas' ||
+        (typeFilter === 'Hastes' && order.categoria.startsWith('Hastes')) ||
+        (typeFilter === 'Revestimento' && order.categoria.startsWith('Revestimentos'));
       const matchesSystem = systemFilter === 'Todos' || order.sistema === systemFilter;
       const matchesStatus = statusFilter === 'Todos' || order.status === statusFilter;
       const matchesSonda = sondaFilter === 'Todos' || order.sonda === sondaFilter;
@@ -351,7 +356,7 @@ export default function App() {
         order.sonda.toLowerCase().includes(searchLower) ||
         order.produto.toLowerCase().includes(searchLower);
 
-      return matchesCategory && matchesSystem && matchesStatus && matchesSonda && matchesClient && matchesSearch;
+      return matchesCategory && matchesType && matchesSystem && matchesStatus && matchesSonda && matchesClient && matchesSearch;
     });
 
     // Sort so PENDENTE is always at the top
@@ -360,10 +365,10 @@ export default function App() {
       if (a.status === 'ATENDIDO' && b.status === 'PENDENTE') return 1;
       return 0;
     });
-  }, [computedData, activeCategory, systemFilter, statusFilter, sondaFilter, clientFilter, searchTerm]);
+  }, [computedData, activeCategory, typeFilter, systemFilter, statusFilter, sondaFilter, clientFilter, searchTerm]);
 
   // Improved update function using ID
-  const updateDataById = async (id: string, columnId: string, value: unknown) => {
+  const updateDataById = useCallback(async (id: string, columnId: string, value: unknown) => {
     const today = new Date().toISOString().split('T')[0];
     const updates: any = { [columnId]: value };
 
@@ -415,9 +420,9 @@ export default function App() {
     } catch (err) {
       console.error('Erro ao atualizar no banco:', err);
     }
-  };
+  }, [data, recordSondaAtendimento, addHistory]);
 
-  const handleAddOrder = async (newOrder: Order) => {
+  const handleAddOrder = useCallback(async (newOrder: Order) => {
     try {
       const dbOrder = {
         id: newOrder.id,
@@ -447,9 +452,9 @@ export default function App() {
     } catch (err) {
       console.error('Erro ao criar pedido no banco:', err);
     }
-  };
+  }, [addHistory]);
 
-  const handleImportOrders = async (newOrders: Order[]) => {
+  const handleImportOrders = useCallback(async (newOrders: Order[]) => {
     try {
       const dbOrders = newOrders.map(o => ({
         id: o.id,
@@ -502,7 +507,7 @@ export default function App() {
       alert(`Erro ao salvar pedidos: ${err.message || 'Erro desconhecido'}`);
       throw err; // Re-throw para o modal tratar se necessário
     }
-  };
+  }, [profile, fetchSondaHistorico, addHistory]);
 
   const handleSyncWithCloud = async () => {
     try {
@@ -534,7 +539,7 @@ export default function App() {
     }
   };
 
-  const handleEditOrder = async (updatedOrder: Order) => {
+  const handleEditOrder = useCallback(async (updatedOrder: Order) => {
     try {
       const dbOrder = {
         codigo: updatedOrder.codigo,
@@ -566,7 +571,7 @@ export default function App() {
     } catch (err) {
       console.error('Erro ao editar pedido no banco:', err);
     }
-  };
+  }, [addHistory]);
 
   const handleClearAllData = async () => {
     try {
@@ -629,15 +634,15 @@ export default function App() {
     }
   };
 
-  const openEditModal = (order: Order) => {
+  const openEditModal = useCallback((order: Order) => {
     setOrderToEdit(order);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const closeOrderModal = () => {
+  const closeOrderModal = useCallback(() => {
     setIsModalOpen(false);
     setOrderToEdit(null);
-  };
+  }, []);
 
   if (isLoadingAuth) {
     return (
@@ -684,6 +689,8 @@ export default function App() {
           clientFilter={clientFilter}
           setClientFilter={setClientFilter}
           availableClients={availableClients}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
         />
       </div>
       
@@ -725,6 +732,8 @@ export default function App() {
                         updateDataById={updateDataById} 
                         onEdit={openEditModal}
                         density={density}
+                        activeCategory={activeCategory}
+                        typeFilter={typeFilter}
                       />
                     </div>
                   </div>

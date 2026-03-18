@@ -92,7 +92,7 @@ export function Charts({ data }: ChartsProps) {
         )}
       </div>
 
-      <div className="h-72 w-full">
+      <div className="h-[400px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={aggregatedData}
@@ -105,7 +105,11 @@ export function Charts({ data }: ChartsProps) {
               dataKey="label" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'currentColor', fontSize: 11, fontWeight: 500 }} 
+              interval={0}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+              tick={{ fill: 'currentColor', fontSize: 10, fontWeight: 500 }} 
               className="text-slate-500 dark:text-slate-400"
             />
             <YAxis 
