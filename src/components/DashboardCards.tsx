@@ -19,11 +19,13 @@ export function DashboardCards({ data }: DashboardCardsProps) {
     .reduce((acc, o) => acc + o.qtdPendente, 0);
 
   // 3. Sondas com mais PEDIDOS (Volume de registros)
-  const sondasVolume = data.reduce((acc, order) => {
-    const sondaName = order.sonda || 'Não identificada';
-    acc[sondaName] = (acc[sondaName] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const sondasVolume = data
+    .filter(o => o.tag !== 'REVESTIMENTOS' && o.sonda !== 'REVESTIMENTOS')
+    .reduce((acc, order) => {
+      const sondaName = order.sonda || 'Não identificada';
+      acc[sondaName] = (acc[sondaName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
   const topSonda = Object.entries(sondasVolume)
     .sort((a, b) => b[1] - a[1])[0];
 

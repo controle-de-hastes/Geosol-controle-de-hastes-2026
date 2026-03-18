@@ -53,6 +53,8 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
     const groups: Record<string, { total: number, lastDate: string, count: number, extra?: string }> = {};
     
     records.forEach(rec => {
+      // Exclude REVESTIMENTOS from sonda-specific history
+      if (rec.sonda === 'REVESTIMENTOS') return;
       let key = '';
       let extra = '';
       if (activeSubgroup === 'sondas') {
