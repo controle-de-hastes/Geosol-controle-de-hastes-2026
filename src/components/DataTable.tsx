@@ -342,11 +342,6 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard', 
       },
     ];
 
-    // Remove TAG column if it's a Revestimento category or type filter
-    if (activeCategory?.startsWith('Revestimentos') || typeFilter === 'Revestimento') {
-      return allColumns.filter(col => ('accessorKey' in col && col.accessorKey !== 'tag') || !('accessorKey' in col));
-    }
-    
     return allColumns;
   }, [onEdit, activeCategory, typeFilter]);
 

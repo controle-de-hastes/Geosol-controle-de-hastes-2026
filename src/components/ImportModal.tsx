@@ -94,10 +94,10 @@ export function ImportModal({ isOpen, onClose, onImport, data }: ImportModalProp
 
           // O banco de dados e a interface esperam que "sonda" guarde a TAG 
           // (para cruzar com SONDAS e histórico corretamente).
-          const tag = foundSonda?.tag || tagRaw || sondaRaw || '';
+          const tag = foundSonda?.tag || tagRaw || sondaRaw || (categoria.startsWith('Revestimentos') ? 'REVESTIMENTOS' : '');
           const sonda = tag;
-          const modelo = foundSonda?.modelo || row['Modelo']?.toString().trim() || '';
-          const descricao_sonda = foundSonda?.descricao || (sondaRaw !== tag ? sondaRaw : '');
+          const modelo = foundSonda?.modelo || row['Modelo']?.toString().trim() || (categoria.startsWith('Revestimentos') ? 'REVESTIMENTOS' : '');
+          const descricao_sonda = foundSonda?.descricao || (sondaRaw !== tag ? sondaRaw : '') || (categoria.startsWith('Revestimentos') ? 'REVESTIMENTOS' : '');
 
           // Look for the most recent data for this TAG to auto-fill missing fields
           // Se newData tem apenas a TAG preenchida, tentamos puxar CC, Cliente e Sistema da base.

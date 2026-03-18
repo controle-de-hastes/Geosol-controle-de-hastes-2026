@@ -132,6 +132,14 @@ export function NewOrderModal({
           codigo: selectedProduct.codigo,
           categoria: selectedProduct.categoria
         };
+
+        // Auto-set Tag for Revestimentos if empty
+        if (selectedProduct.categoria.startsWith('Revestimentos') && !newData.tag) {
+          newData.tag = 'REVESTIMENTOS';
+          newData.sonda = 'REVESTIMENTOS';
+          newData.descricao_sonda = 'REVESTIMENTOS';
+          newData.modelo = 'REVESTIMENTOS';
+        }
         
         // Recalcula se profundidade já estiver preenchida
         if (newData.profundidadeFuro) {
