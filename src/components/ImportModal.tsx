@@ -134,7 +134,7 @@ export function ImportModal({ isOpen, onClose, onImport, data }: ImportModalProp
                return rodLength ? qtdSolicitada * rodLength : undefined;
             })(),
           };
-        }).filter(order => order !== null);
+        }).filter(order => order !== null && order.qtdSolicitada > 0);
 
         console.log(`Mapeados ${orders.length} pedidos. Iniciando importação...`);
         await onImport(orders);
