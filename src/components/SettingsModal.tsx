@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Download, Trash2, AlertTriangle, Settings as SettingsIcon, 
   User, Palette, Bell, Database, Save, Check, Monitor, Moon, Sun, History,
-  RefreshCcw, Shield, PlusCircle, Search, Pencil, Edit3, FileDown, Trash, Users
+  RefreshCcw, Shield, PlusCircle, Search, Pencil, Edit3, FileDown, Trash, Users,
+  Eye, EyeOff
 } from 'lucide-react';
 import { Order, HistoryEvent, Profile } from '../types';
 import { supabase } from '../lib/supabase';
@@ -28,6 +29,8 @@ type TabId = 'perfil' | 'usuarios' | 'dados' | 'historico';
 export function SettingsModal({ isOpen, onClose, data, history, onClearData, onRestoreData, profile, theme, onThemeChange, density, onDensityChange, onSyncWithCloud }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('perfil');
   const [showConfirmClear, setShowConfirmClear] = useState(false);
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -478,16 +481,26 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                     </div>
                     <div className="grid gap-2">
                       <label className="text-sm font-medium text-slate-700">Nova Senha</label>
-                      <input 
-                        type="password" 
-                        name="profile-new-password"
-                        value={currentProfile.password}
-                        onChange={(e) => setCurrentProfile({...currentProfile, password: e.target.value})}
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        placeholder="Deixe em branco para não alterar"
-                        autoComplete="new-password"
-                        data-lpignore="true"
-                      />
+                      <div className="relative">
+                        <input 
+                          type={showProfilePassword ? 'text' : 'password'}
+                          name="profile-new-password"
+                          value={currentProfile.password}
+                          onChange={(e) => setCurrentProfile({...currentProfile, password: e.target.value})}
+                          className="w-full px-3 py-2 pr-10 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="Deixe em branco para não alterar"
+                          autoComplete="new-password"
+                          data-lpignore="true"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowProfilePassword(!showProfilePassword)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors rounded"
+                          tabIndex={-1}
+                        >
+                          {showProfilePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
                     <div className="grid gap-2">
                       <label className="text-sm font-medium text-slate-700">Nível de Acesso (Cargo)</label>
@@ -514,7 +527,10 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                   {/* Formulário Criar Usuário */}
                   <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
                     <h5 className="text-sm font-bold text-slate-800 mb-4">Adicionar Novo Usuário</h5>
-                    <form onSubmit={handleCreateUser} className="space-y-4">
+                    <form onSubmit={handleCreateUser} className="space-y-4" autoComplete="off">
+                      {/* Hidden dummy fields to prevent browser autofill */}
+                      <input type="text" name="prevent_autofill" id="prevent_autofill" autoComplete="off" style={{ display: 'none' }} tabIndex={-1} />
+                      <input type="password" name="prevent_autofill_pass" id="prevent_autofill_pass" autoComplete="off" style={{ display: 'none' }} tabIndex={-1} />
                       {createUserError && (
                         <div className="p-3 bg-red-100 text-red-600 rounded-lg text-sm border border-red-200">
                           {createUserError}
@@ -535,6 +551,7 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                             onChange={(e) => setNewUserName(e.target.value)}
                             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="Nome do Usuário"
+                            autoComplete="off"
                           />
                         </div>
                         <div>
@@ -546,19 +563,31 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                             onChange={(e) => setNewUserEmail(e.target.value)}
                             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="email@exemplo.com"
+                            autoComplete="off"
                           />
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-slate-700 mb-1">Senha (Mín. 6 chars)</label>
-                          <input 
-                            type="password"
-                            required
-                            minLength={6}
-                            value={newUserPassword}
-                            onChange={(e) => setNewUserPassword(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="******"
-                          />
+                          <div className="relative">
+                            <input 
+                              type={showNewUserPassword ? 'text' : 'password'}
+                              required
+                              minLength={6}
+                              value={newUserPassword}
+                              onChange={(e) => setNewUserPassword(e.target.value)}
+                              className="w-full px-3 py-2 pr-10 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                              placeholder="******"
+                              autoComplete="new-password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors rounded"
+                              tabIndex={-1}
+                            >
+                              {showNewUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-slate-700 mb-1">Permissão Inicial</label>
