@@ -32,7 +32,7 @@ function EditableCell({ getValue, row, column: { id }, table }: EditableCellProp
   const [value, setValue] = useState(String(initialValue));
   const [error, setError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const lastFocusNonce = useRef<number>(-1);
+  const lastFocusNonce = useRef<number>(table.options.meta?.focusNonce || 0);
   const skipNextBlurSave = useRef(false);
 
   const { selectedRowId, focusNonce, requestNextFocus, setSelectedRowId } = table.options.meta || {};

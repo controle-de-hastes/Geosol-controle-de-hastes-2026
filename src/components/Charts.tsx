@@ -14,7 +14,12 @@ export function Charts({ data }: ChartsProps) {
   const { aggregatedData, chartTitle, currentDataKey } = useMemo(() => {
     if (selectedClient) {
       // Aggregate by Sonda for the specific client
-      const filtered = data.filter(d => d.cliente === selectedClient && d.tag !== 'REVESTIMENTOS' && d.sonda !== 'REVESTIMENTOS');
+      const filtered = data.filter(d => 
+        d.cliente === selectedClient && 
+        !d.categoria.toLowerCase().startsWith('revestimento') &&
+        d.tag?.toUpperCase() !== 'REVESTIMENTOS' &&
+        d.sonda?.toUpperCase() !== 'REVESTIMENTOS'
+      );
       const aggregated = filtered.reduce((acc, order) => {
         const label = order.tag && order.tag !== order.sonda 
           ? `${order.tag} - ${order.sonda}`
