@@ -20,6 +20,7 @@ export function DashboardCards({ data }: DashboardCardsProps) {
 
   // 3. Sondas com mais PEDIDOS (Volume de registros)
   const sondasVolume = data
+    .filter(order => !order.categoria.startsWith('Revestimentos'))
     .reduce((acc, order) => {
       const sondaName = order.sonda || 'Não identificada';
       acc[sondaName] = (acc[sondaName] || 0) + 1;

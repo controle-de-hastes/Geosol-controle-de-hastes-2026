@@ -363,32 +363,32 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard', 
   });
 
   return (
-    <div className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-full overflow-hidden">
-      <div 
-        className="overflow-auto flex-1 relative focus:outline-none" 
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (!selectedRowId) return;
-          const rows = table.getRowModel().rows;
-          const currentIndex = rows.findIndex(r => r.id === selectedRowId);
-          
-          if (e.key === 'ArrowDown' && currentIndex < rows.length - 1) {
-            e.preventDefault();
-            const nextId = rows[currentIndex + 1].id;
-            setSelectedRowId(nextId);
-            const nextRow = e.currentTarget.querySelector(`tr[data-row-id="${nextId}"]`) as HTMLElement;
-            if (nextRow) nextRow.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-          } else if (e.key === 'ArrowUp' && currentIndex > 0) {
-            e.preventDefault();
-            const prevId = rows[currentIndex - 1].id;
-            setSelectedRowId(prevId);
-            const prevRow = e.currentTarget.querySelector(`tr[data-row-id="${prevId}"]`) as HTMLElement;
-            if (prevRow) prevRow.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-          }
-        }}
-      >
+    <div 
+      className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-auto focus:outline-none max-h-[calc(100vh-300px)]"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (!selectedRowId) return;
+        const rows = table.getRowModel().rows;
+        const currentIndex = rows.findIndex(r => r.id === selectedRowId);
+        
+        if (e.key === 'ArrowDown' && currentIndex < rows.length - 1) {
+          e.preventDefault();
+          const nextId = rows[currentIndex + 1].id;
+          setSelectedRowId(nextId);
+          const nextRow = e.currentTarget.querySelector(`tr[data-row-id="${nextId}"]`) as HTMLElement;
+          if (nextRow) nextRow.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+          e.preventDefault();
+          const prevId = rows[currentIndex - 1].id;
+          setSelectedRowId(prevId);
+          const prevRow = e.currentTarget.querySelector(`tr[data-row-id="${prevId}"]`) as HTMLElement;
+          if (prevRow) prevRow.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+      }}
+    >
+      <div className="min-w-max flex-1 flex flex-col">
         <table className="w-full text-sm text-left border-collapse">
-          <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 shadow-sm">
+          <thead className="bg-slate-50 dark:bg-slate-800 shadow-sm sticky top-0 z-20">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-slate-200 dark:border-slate-700">
                 {headerGroup.headers.map((header) => (

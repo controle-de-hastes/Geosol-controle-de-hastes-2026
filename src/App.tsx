@@ -719,14 +719,14 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="flex-1 flex flex-col min-h-[600px]">
+                  <div className="flex-1 flex flex-col min-h-0">
                     <div className="flex items-center justify-between mb-4 shrink-0 px-1">
                       <h3 className="text-xl font-bold text-white">Tabela de Gestão</h3>
                       <span className="text-sm text-slate-200 bg-slate-800/40 border border-slate-700/50 px-3 py-1.5 rounded-lg font-semibold backdrop-blur-sm">
                         {filteredData.length} registros
                       </span>
                     </div>
-                    <div className="flex-1 overflow-hidden flex flex-col shadow-2xl shadow-slate-900/20 rounded-2xl">
+                    <div className="flex flex-col shadow-2xl shadow-slate-900/20 rounded-2xl">
                       <DataTable 
                         data={filteredData} 
                         updateDataById={updateDataById} 
