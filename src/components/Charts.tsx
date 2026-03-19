@@ -15,10 +15,7 @@ export function Charts({ data }: ChartsProps) {
     if (selectedClient) {
       // Aggregate by Sonda for the specific client
       const filtered = data.filter(d => 
-        d.cliente === selectedClient && 
-        !d.categoria.toLowerCase().startsWith('revestimento') &&
-        d.tag?.toUpperCase() !== 'REVESTIMENTOS' &&
-        d.sonda?.toUpperCase() !== 'REVESTIMENTOS'
+        d.cliente === selectedClient
       );
       const aggregated = filtered.reduce((acc, order) => {
         const label = order.tag && order.tag !== order.sonda 
