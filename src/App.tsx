@@ -321,9 +321,17 @@ export default function App() {
   // Compute derived fields (qtdPendente, status)
   const computedData: ComputedOrder[] = useMemo(() => {
     return data.map((order) => {
-      const qtdPendente = Math.max(0, order.qtdSolicitada - order.qtdAtendida);
-      const status = order.qtdAtendida < order.qtdSolicitada ? 'PENDENTE' : 'ATENDIDO';
-      return { ...order, qtdPendente, status };
+      const solicitada = Number(order.qtdSolicitada) || 0;
+      const atendida = Number(order.qtdAtendida) || 0;
+      const qtdPendente = Math.max(0, solicitada - atendida);
+      const status = atendida < solicitada ? 'PENDENTE' : 'ATENDIDO';
+      return { 
+        ...order, 
+        qtdSolicitada: solicitada, 
+        qtdAtendida: atendida, 
+        qtdPendente, 
+        status 
+      };
     });
   }, [data]);
 
