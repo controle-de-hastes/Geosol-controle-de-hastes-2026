@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { X, Plus, Save } from 'lucide-react';
-import { Order, Category, System, SondaHistorico } from '../types';
+import { Order, Category, System, SondaHistorico, Cliente } from '../types';
 import { PRODUCTS, SONDAS } from '../constants';
 import { extractRodLength } from '../lib/excelUtils';
 
@@ -13,6 +13,7 @@ interface NewOrderModalProps {
   orderToEdit?: Order | null;
   data: Order[];
   sondaHistorico: SondaHistorico[];
+  clientes: Cliente[];
 }
 
 export function NewOrderModal({ 
@@ -23,7 +24,8 @@ export function NewOrderModal({
   defaultCategory, 
   orderToEdit,
   data,
-  sondaHistorico
+  sondaHistorico,
+  clientes
 }: NewOrderModalProps) {
   const [formData, setFormData] = useState<Omit<Order, 'id' | 'qtdAtendida' | 'dataAtendimentoInicio' | 'dataAtendimentoFinal'>>({
     codigo: '',
@@ -106,19 +108,12 @@ export function NewOrderModal({
     }
   }, [orderToEdit, defaultCategory, isOpen]);
 
-  if (!isOpen) return null;
-
-
   const calculateAndSetQtd = (depth: number | undefined, product: string) => {
     if (!depth || depth <= 0) return;
-    
     const rodLength = extractRodLength(product);
     if (rodLength && rodLength > 0) {
       const calculatedQtd = Math.ceil(depth / rodLength);
-      setFormData(prev => ({
-        ...prev,
-        qtdSolicitada: calculatedQtd
-      }));
+      setFormData(prev => ({ ...prev, qtdSolicitada: calculatedQtd }));
     }
   };
 
@@ -132,16 +127,12 @@ export function NewOrderModal({
           codigo: selectedProduct.codigo,
           categoria: selectedProduct.categoria
         };
-
-        // Auto-set Tag for Revestimentos if empty
         if (selectedProduct.categoria.startsWith('Revestimentos') && !newData.tag) {
           newData.tag = 'REVESTIMENTOS';
           newData.sonda = 'REVESTIMENTOS';
           newData.descricao_sonda = 'REVESTIMENTOS';
           newData.modelo = 'REVESTIMENTOS';
         }
-        
-        // Recalcula se profundidade já estiver preenchida
         if (newData.profundidadeFuro) {
           const rodLength = extractRodLength(produtoName);
           if (rodLength && rodLength > 0) {
@@ -155,11 +146,32 @@ export function NewOrderModal({
         ...prev,
         produto: produtoName,
         codigo: '',
-        categoria: defaultCategory === 'Geral' ? 'Haste Novas' : defaultCategory
+        categoria: defaultCategory === 'Geral' ? 'Hastes Novas' : defaultCategory
       }));
     }
   };
 
+  useEffect(() => {
+    if (formData.cliente && (clientes?.length || 0) > 0) {
+      const found = clientes.find(c => c.nome.toUpperCase() === formData.cliente.toUpperCase());
+      if (found && found.cc && !formData.cc) {
+        setFormData(prev => ({ ...prev, cc: found.cc }));
+      }
+    }
+  }, [formData.cliente, clientes]);
+
+  useEffect(() => {
+    if (formData.cc && formData.cc.trim() && (clientes?.length || 0) > 0) {
+      const ccTrim = formData.cc.trim().toUpperCase();
+      const found = clientes.find(c => (c.cc || '').toUpperCase() === ccTrim);
+      if (found && found.nome !== formData.cliente) {
+        setFormData(prev => ({ ...prev, cliente: found.nome }));
+      }
+    }
+  }, [formData.cc, clientes]);
+
+
+  if (!isOpen) return null;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -229,19 +241,26 @@ export function NewOrderModal({
                 value={formData.cc}
                 onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="Ex: CC-101"
+                placeholder="Ex: 1020"
               />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Cliente</label>
               <input
                 required
+                list="client-list"
                 type="text"
                 value={formData.cliente}
                 onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="Nome do cliente"
               />
+              <datalist id="client-list">
+                {(clientes || []).map(c => (
+                  <option key={c.id} value={c.nome} />
+                ))}
+              </datalist>
+
             </div>
           </div>
 
@@ -376,7 +395,19 @@ export function NewOrderModal({
                 type="number"
                 min="1"
                 value={formData.qtdSolicitada}
-                onChange={(e) => setFormData({ ...formData, qtdSolicitada: Number(e.target.value) })}
+                onChange={(e) => {
+                  const qtd = Number(e.target.value);
+                  const rodLength = formData.produto ? extractRodLength(formData.produto) : null;
+                  if (rodLength && rodLength > 0 && qtd > 0) {
+                    setFormData(prev => ({
+                      ...prev,
+                      qtdSolicitada: qtd,
+                      profundidadeFuro: parseFloat((qtd * rodLength).toFixed(2))
+                    }));
+                  } else {
+                    setFormData(prev => ({ ...prev, qtdSolicitada: qtd }));
+                  }
+                }}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>

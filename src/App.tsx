@@ -13,7 +13,7 @@ import { supabase } from './lib/supabase';
 import { initialData } from './data';
 import { Order, ComputedOrder, Category, System, HistoryEvent, ViewMode, HistorySubgroup } from './types';
 import { Session } from '@supabase/supabase-js';
-import { Profile, SondaHistorico } from './types';
+import { Profile, SondaHistorico, Cliente } from './types';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -23,6 +23,7 @@ export default function App() {
   const [data, setData] = useState<Order[]>([]);
   const [history, setHistory] = useState<HistoryEvent[]>([]);
   const [sondaHistorico, setSondaHistorico] = useState<SondaHistorico[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'Geral'>('Geral');
   const [searchTerm, setSearchTerm] = useState('');
   const [systemFilter, setSystemFilter] = useState<System | 'Todos'>('Todos');
@@ -130,9 +131,22 @@ export default function App() {
         .select('*')
         .order('data_atendimento', { ascending: false });
       if (error) throw error;
-      setSondaHistorico(rows as SondaHistorico[]);
+      setSondaHistorico((rows || []) as SondaHistorico[]);
     } catch (err) {
       console.error('Erro ao buscar histórico de sondas:', err);
+    }
+  };
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('nome', { ascending: true });
+      if (error) throw error;
+      setClientes((data || []) as Cliente[]);
+    } catch (err) {
+      console.error('Erro ao buscar clientes:', err);
     }
   };
 
@@ -214,6 +228,7 @@ export default function App() {
         fetchOrders();
         fetchHistory();
         fetchSondaHistorico();
+        fetchClientes();
       } else {
         setIsLoadingAuth(false);
       }
@@ -228,6 +243,7 @@ export default function App() {
         fetchOrders();
         fetchHistory();
         fetchSondaHistorico();
+        fetchClientes();
       } else {
         setProfile(null);
         setIsLoadingAuth(false);
@@ -581,6 +597,18 @@ export default function App() {
     }
   }, [addHistory]);
 
+  const handleDeleteOrder = useCallback(async (order: Order) => {
+    try {
+      const { error } = await supabase.from('orders').delete().eq('id', order.id);
+      if (error) throw error;
+      setData(prev => prev.filter(o => o.id !== order.id));
+      addHistory(`Pedido ${order.id} excluído.`, 'DELETE');
+    } catch (err) {
+      console.error('Erro ao excluir pedido:', err);
+      alert('Erro ao excluir pedido.');
+    }
+  }, [addHistory]);
+
   const handleClearAllData = async () => {
     try {
       // DELETE ALL requires a filter in Supabase client for safety, neq('id', '0') is common
@@ -739,6 +767,7 @@ export default function App() {
                         data={filteredData} 
                         updateDataById={updateDataById} 
                         onEdit={openEditModal}
+                        onDelete={handleDeleteOrder}
                         density={density}
                         activeCategory={activeCategory}
                         typeFilter={typeFilter}
@@ -770,6 +799,7 @@ export default function App() {
         orderToEdit={orderToEdit}
         data={data}
         sondaHistorico={sondaHistorico}
+        clientes={clientes}
       />
 
       <ImportModal 
@@ -777,6 +807,7 @@ export default function App() {
         onClose={() => setIsImportModalOpen(false)}
         onImport={handleImportOrders}
         data={data}
+        clientes={clientes}
       />
 
       <SettingsModal
@@ -792,6 +823,8 @@ export default function App() {
         density={density}
         onDensityChange={setDensity}
         onSyncWithCloud={handleSyncWithCloud}
+        clientes={clientes}
+        onRefreshClientes={fetchClientes}
       />
     </div>
   );

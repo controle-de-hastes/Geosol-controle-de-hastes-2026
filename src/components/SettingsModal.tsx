@@ -3,11 +3,13 @@ import {
   X, Download, Trash2, AlertTriangle, Settings as SettingsIcon, 
   User, Palette, Bell, Database, Save, Check, Monitor, Moon, Sun, History,
   RefreshCcw, Shield, PlusCircle, Search, Pencil, Edit3, FileDown, Trash, Users,
-  Eye, EyeOff
+  Eye, EyeOff, Briefcase, FileSpreadsheet, Upload
 } from 'lucide-react';
-import { Order, HistoryEvent, Profile } from '../types';
+import { Order, HistoryEvent, Profile, Cliente } from '../types';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import * as XLSX from 'xlsx';
+import { downloadClienteTemplate } from '../lib/excelUtils';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -22,11 +24,17 @@ interface SettingsModalProps {
   density: 'standard' | 'compact';
   onDensityChange: (density: 'standard' | 'compact') => void;
   onSyncWithCloud?: () => Promise<void>;
+  clientes: Cliente[];
+  onRefreshClientes: () => Promise<void>;
 }
 
-type TabId = 'perfil' | 'usuarios' | 'dados' | 'historico';
+type TabId = 'perfil' | 'usuarios' | 'dados' | 'historico' | 'clientes';
 
-export function SettingsModal({ isOpen, onClose, data, history, onClearData, onRestoreData, profile, theme, onThemeChange, density, onDensityChange, onSyncWithCloud }: SettingsModalProps) {
+export function SettingsModal({ 
+  isOpen, onClose, data, history, onClearData, onRestoreData, profile, 
+  theme, onThemeChange, density, onDensityChange, onSyncWithCloud,
+  clientes, onRefreshClientes
+}: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('perfil');
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [showProfilePassword, setShowProfilePassword] = useState(false);
@@ -53,6 +61,15 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
   const [editingUserName, setEditingUserName] = useState('');
   const [isDeletingUserId, setIsDeletingUserId] = useState<string | null>(null);
 
+  // State for clientes
+  const [newClienteName, setNewClienteName] = useState('');
+  const [newClienteCC, setNewClienteCC] = useState('');
+  const [isCreatingCliente, setIsCreatingCliente] = useState(false);
+  const [isDeletingClienteId, setIsDeletingClienteId] = useState<string | null>(null);
+  const [isImportingClientes, setIsImportingClientes] = useState(false);
+  const isLoadingClientes = false; // Podemos adicionar suporte a loading global depois se necessário
+
+
   const isAdmin = profile?.role === 'admin';
 
   // State for current profile form
@@ -77,6 +94,8 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
   useEffect(() => {
     if (activeTab === 'usuarios' && isAdmin) {
       fetchUsers();
+    } else if (activeTab === 'clientes') {
+      onRefreshClientes();
     }
   }, [activeTab, isAdmin]);
 
@@ -144,6 +163,86 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
     } finally {
       setIsDeletingUserId(null);
     }
+  };
+
+  const handleCreateCliente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClienteName.trim()) return;
+
+    setIsCreatingCliente(true);
+    const { error } = await supabase
+      .from('clientes')
+      .insert([{ 
+        nome: newClienteName.trim().toUpperCase(), 
+        cc: newClienteCC.trim().toUpperCase() 
+      }]);
+
+    if (!error) {
+      await onRefreshClientes();
+      setNewClienteName('');
+      setNewClienteCC('');
+    } else {
+      alert('Erro ao criar cliente.');
+    }
+    setIsCreatingCliente(false);
+  };
+
+  const handleImportClientesFromExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImportingClientes(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        if (jsonData.length === 0) {
+          alert('O arquivo está vazio.');
+          return;
+        }
+
+        const clientesToImport = jsonData.map(row => ({
+          nome: (row['Nome'] || row['Cliente'] || '').toString().trim().toUpperCase(),
+          cc: (row['Centro Custo'] || row['CC'] || '').toString().trim().toUpperCase()
+        })).filter(c => c.nome);
+
+        if (clientesToImport.length > 0) {
+          const { error } = await supabase.from('clientes').insert(clientesToImport);
+          if (error) throw error;
+          await onRefreshClientes();
+          alert(`${clientesToImport.length} clientes importados com sucesso!`);
+        }
+      } catch (err: any) {
+        console.error('Erro ao importar clientes:', err);
+        alert('Erro ao processar arquivo: ' + (err.message || 'Erro desconhecido'));
+      } finally {
+        setIsImportingClientes(false);
+        if (e.target) e.target.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleDeleteCliente = async (clienteId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+    
+    setIsDeletingClienteId(clienteId);
+    const { error } = await supabase
+      .from('clientes')
+      .delete()
+      .eq('id', clienteId);
+
+    if (!error) {
+      await onRefreshClientes();
+    } else {
+      alert('Erro ao excluir cliente.');
+    }
+    setIsDeletingClienteId(null);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -374,6 +473,7 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
 
   const allTabs = [
     { id: 'perfil', label: 'Meu Perfil', icon: User, show: true },
+    { id: 'clientes', label: 'Controle de Clientes', icon: Briefcase, show: true },
     { id: 'usuarios', label: 'Gerenciar Usuários', icon: Users, show: isAdmin },
     { id: 'dados', label: 'Dados e Backup', icon: Database, show: true },
     { id: 'historico', label: 'Histórico', icon: History, show: true },
@@ -511,6 +611,119 @@ export function SettingsModal({ isOpen, onClose, data, history, onClearData, onR
                       <p className="text-xs text-slate-400">O cargo só pode ser alterado por um administrador na aba "Gerenciar Usuários".</p>
                     </div>
                   </form>
+                </div>
+              )}
+
+              {/* CONTROLE DE CLIENTES */}
+              {activeTab === 'clientes' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <div>
+                    <h4 className="text-lg font-bold text-slate-800">Controle de Clientes</h4>
+                    <p className="text-sm text-slate-500">Cadastre e gerencie a lista de clientes do sistema.</p>
+                  </div>
+
+                  {/* Formulário Novo Cliente */}
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="text-sm font-bold text-slate-800">Adicionar Novo Cliente</h5>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={downloadClienteTemplate}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Modelo Excel
+                        </button>
+                        <label className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 border border-emerald-700 rounded-lg text-xs font-bold text-white hover:bg-emerald-700 transition-colors cursor-pointer">
+                          <Upload className="w-3.5 h-3.5" />
+                          {isImportingClientes ? 'Importando...' : 'Importar Excel'}
+                          <input 
+                            type="file" 
+                            accept=".xlsx" 
+                            className="hidden" 
+                            onChange={handleImportClientesFromExcel}
+                            disabled={isImportingClientes}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleCreateCliente} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-2">
+                        <input 
+                          type="text" 
+                          required
+                          value={newClienteName}
+                          onChange={(e) => setNewClienteName(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="Nome do Cliente (Ex: VALE - ITABIRA)"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          value={newClienteCC}
+                          onChange={(e) => setNewClienteCC(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="CC (Ex: 1020)"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isCreatingCliente || !newClienteName.trim()}
+                          className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {isCreatingCliente ? (
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <PlusCircle className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Lista de Clientes */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                      <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Clientes Cadastrados</h5>
+                    </div>
+                    
+                    {isLoadingClientes ? (
+                      <div className="py-12 text-center text-slate-500 text-sm flex flex-col items-center gap-3">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        Carregando...
+                      </div>
+                    ) : clientes.length === 0 ? (
+                      <div className="py-12 text-center text-slate-500 text-sm italic">
+                        Nenhum cliente cadastrado.
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
+                        {clientes.map(cliente => (
+                          <div key={cliente.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-slate-700">{cliente.nome}</span>
+                              {cliente.cc && (
+                                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tight">CC: {cliente.cc}</span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDeleteCliente(cliente.id)}
+                              disabled={isDeletingClienteId === cliente.id}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                              title="Excluir Cliente"
+                            >
+                              {isDeletingClienteId === cliente.id ? (
+                                <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

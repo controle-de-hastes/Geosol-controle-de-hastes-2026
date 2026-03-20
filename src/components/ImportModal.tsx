@@ -1,7 +1,7 @@
 import { useState, useRef, ChangeEvent, DragEvent } from 'react';
 import { X, Upload, Download, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Order, System, Category } from '../types';
+import { Order, System, Category, Cliente } from '../types';
 import { downloadExcelTemplate, extractRodLength, inferCategoryFromProduct } from '../lib/excelUtils';
 import { SONDAS } from '../constants';
 
@@ -10,9 +10,10 @@ interface ImportModalProps {
   onClose: () => void;
   onImport: (orders: Order[]) => Promise<void>;
   data: Order[];
+  clientes: Cliente[];
 }
 
-export function ImportModal({ isOpen, onClose, onImport, data }: ImportModalProps) {
+export function ImportModal({ isOpen, onClose, onImport, data, clientes }: ImportModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,8 +104,15 @@ export function ImportModal({ isOpen, onClose, onImport, data }: ImportModalProp
           // Se newData tem apenas a TAG preenchida, tentamos puxar CC, Cliente e Sistema da base.
           const recentOrder = data.find((o: Order) => o.tag === tag || o.sonda === tag);
 
-          const cc = row['Centro Custo']?.toString().trim() || recentOrder?.cc || 'NÃO INF.';
+          const ccRow = row['Centro Custo']?.toString().trim();
           const cliente = row['Cliente']?.toString().trim() || recentOrder?.cliente || 'NÃO INFORMADO';
+
+          // Try to get CC from clientes list if not in row
+          let cc = ccRow;
+          if (!cc) {
+            const foundCliente = clientes.find(c => c.nome.toUpperCase() === cliente.toUpperCase());
+            cc = foundCliente?.cc || recentOrder?.cc || 'NÃO INF.';
+          }
           
           let sistemaParsed = undefined;
           if (sistemaRaw === 'sul' || sistemaRaw === 'norte') {

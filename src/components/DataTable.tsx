@@ -8,7 +8,7 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { ComputedOrder, Order, Category, ItemType } from '../types';
-import { ArrowUpDown, Edit2, Package } from 'lucide-react';
+import { ArrowUpDown, Edit2, Package, Trash2 } from 'lucide-react';
 
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends import('@tanstack/react-table').RowData> {
@@ -195,12 +195,13 @@ interface DataTableProps {
   data: ComputedOrder[];
   updateDataById: (id: string, columnId: string, value: unknown) => void;
   onEdit: (order: Order) => void;
+  onDelete: (order: Order) => void;
   density?: 'standard' | 'compact';
   activeCategory?: string;
   typeFilter?: ItemType;
 }
 
-export function DataTable({ data, updateDataById, onEdit, density = 'standard', activeCategory, typeFilter }: DataTableProps) {
+export function DataTable({ data, updateDataById, onEdit, onDelete, density = 'standard', activeCategory, typeFilter }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
@@ -329,7 +330,7 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard', 
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-1">
             <button
               onClick={() => onEdit(row.original)}
               className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
@@ -337,13 +338,24 @@ export function DataTable({ data, updateDataById, onEdit, density = 'standard', 
             >
               <Edit2 className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => {
+                if (confirm(`Excluir pedido ${row.original.id}? Esta ação não pode ser desfeita.`)) {
+                  onDelete(row.original);
+                }
+              }}
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
+              title="Excluir Pedido"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
         ),
       },
     ];
 
     return allColumns;
-  }, [onEdit, activeCategory, typeFilter]);
+  }, [onEdit, onDelete, activeCategory, typeFilter]);
 
 
   const table = useReactTable({

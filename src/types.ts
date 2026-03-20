@@ -58,3 +58,10 @@ export interface SondaHistorico {
   created_at?: string;
   descricao_sonda?: string;
 }
+
+export interface Cliente {
+  id: string;
+  nome: string;
+  cc?: string;
+  created_at?: string;
+}

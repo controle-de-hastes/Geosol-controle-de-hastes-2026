@@ -17,6 +17,11 @@ export const TEMPLATE_HEADERS = [
   'Categoria'
 ];
 
+export const CLIENTE_HEADERS = [
+  'Nome',
+  'Centro Custo'
+];
+
 /**
  * Extracts rod length from product description (e.g., "3,00m", "1.50m")
  */
@@ -63,6 +68,22 @@ export const downloadExcelTemplate = () => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Modelo Importação');
   XLSX.writeFile(wb, 'modelo_importacao_pedidos.xlsx');
+};
+
+export const downloadClienteTemplate = () => {
+  const exampleRows = [
+    ['VALE - ITABIRA', '1020'],
+    ['ANGLO AMERICAN', '1030'],
+    ['GEOSOL SERVIÇOS', '2000']
+  ];
+
+  const wsData = [CLIENTE_HEADERS, ...exampleRows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{ wch: 30 }, { wch: 20 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Modelo Clientes');
+  XLSX.writeFile(wb, 'modelo_importacao_clientes.xlsx');
 };
 
 export interface ExportOrder {
