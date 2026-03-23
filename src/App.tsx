@@ -680,24 +680,49 @@ export default function App() {
   };
 
   const handleClearHistory = async () => {
-    if (!window.confirm('Tem certeza que deseja apagar todo o histórico de movimentação? Esta ação não pode ser desfeita.')) {
+    if (!window.confirm('Tem certeza que deseja apagar todo o histórico e sincronizar com os dados atuais? Esta ação substituirá o histórico antigo pelas movimentações dos pedidos que já foram atendidos.')) {
       return;
     }
 
     try {
-      // Use empty UUID for uuid fields to avoid conversion errors
+      // 1. Limpar históricos antigos
       const { error: histError } = await supabase.from('sonda_historico').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       if (histError) throw histError;
 
       const { error: eventsError } = await supabase.from('history_events').delete().neq('id', 'placeholder');
       if (eventsError) throw eventsError;
 
-      setSondaHistorico([]);
+      // 2. Preparar novos registros baseados nos pedidos atuais que têm atendimento
+      const attendedOrders = data.filter(o => (o.qtdAtendida || 0) > 0);
+      const userName = profile?.full_name || profile?.email || 'Sistema';
+      
+      const newHistoryRecords = attendedOrders.map(order => ({
+        sonda: order.sonda.trim(),
+        data_atendimento: order.dataAtendimentoFinal || order.dataAtendimentoInicio || new Date().toISOString().split('T')[0],
+        pedido_id: order.id,
+        produto: order.produto,
+        cc: order.cc,
+        cliente: order.cliente,
+        qtd_atendida: order.qtdAtendida,
+        user_name: userName,
+        descricao_sonda: order.descricao_sonda,
+      }));
+
+      // 3. Salvar novos registros no banco
+      if (newHistoryRecords.length > 0) {
+        const { error: insertError } = await supabase.from('sonda_historico').insert(newHistoryRecords);
+        if (insertError) throw insertError;
+      }
+
+      // 4. Atualizar estados locais
+      await fetchSondaHistorico();
       setHistory([]);
-      addHistory('Todo o histórico de movimentação foi apagado pelo usuário.', 'DELETE');
+      addHistory('O histórico foi resetado e sincronizado com os atendimentos dos pedidos atuais.', 'DELETE');
+      
+      alert('Histórico resetado e sincronizado com sucesso!');
     } catch (err) {
-      console.error('Erro ao limpar histórico:', err);
-      alert('Houve um erro ao apagar o histórico no servidor. Verifique se você tem permissão.');
+      console.error('Erro ao resetar histórico:', err);
+      alert('Houve um erro ao processar o reset do histórico.');
     }
   };
 

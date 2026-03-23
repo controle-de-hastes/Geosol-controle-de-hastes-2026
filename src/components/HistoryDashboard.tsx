@@ -58,8 +58,8 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
       let key = '';
       let extra = '';
       if (activeSubgroup === 'sondas') {
-        key = rec.descricao_sonda || rec.sonda || 'Sem Descrição';
-        extra = rec.sonda;
+        key = rec.sonda || 'Sem TAG';
+        extra = rec.descricao_sonda || 'Sem Descrição';
       }
       else if (activeSubgroup === 'clientes') key = rec.cliente || 'Sem Cliente';
       else if (activeSubgroup === 'cc') key = rec.cc || 'Sem CC';
@@ -122,7 +122,7 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
     return (sondaHistorico || []).filter(item => {
       // Filter by card selection
       if (selectedFilter) {
-        if (activeSubgroup === 'sondas' && (item.descricao_sonda || item.sonda) !== selectedFilter) return false;
+        if (activeSubgroup === 'sondas' && (item.sonda !== selectedFilter)) return false;
         if (activeSubgroup === 'clientes' && item.cliente !== selectedFilter) return false;
         if (activeSubgroup === 'cc' && item.cc !== selectedFilter) return false;
         if (activeSubgroup === 'sistema') {
@@ -222,8 +222,8 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
               <div className="relative p-8 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-8">
                   <div className="flex-1 min-w-0 pr-4">
-                    <h3 className={`text-xl font-black truncate tracking-tight transition-colors duration-300 ${
-                      isActive ? 'text-white' : 'text-slate-900'
+                    <h3 className={`text-xl font-black truncate tracking-tighter transition-colors duration-300 ${
+                      isActive ? 'text-white font-mono' : 'text-slate-900 font-mono'
                     }`}>
                       {item.name}
                     </h3>
@@ -391,15 +391,15 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
                   }
 
                   const mainLabel = activeSubgroup === 'sondas' 
-                    ? (log.descricao_sonda || log.sonda)
+                    ? log.sonda
                     : activeSubgroup === 'clientes' 
                     ? log.cliente 
                     : activeSubgroup === 'cc' 
                     ? log.cc 
                     : (data.find(o => o.id === log.pedido_id)?.sistema || 'Norte');
 
-                  const subLabel1 = activeSubgroup === 'sondas' ? log.sonda : (log.descricao_sonda || log.sonda);
-                  const secondaryMain = activeSubgroup === 'sondas' ? log.cliente : (log.descricao_sonda || log.sonda);
+                  const subLabel1 = activeSubgroup === 'sondas' ? log.descricao_sonda : (log.descricao_sonda || log.sonda);
+                  const secondaryMain = activeSubgroup === 'sondas' ? log.cliente : (log.sonda);
                   const secondarySub = activeSubgroup === 'sondas' ? `CC: ${log.cc}` : `Cliente: ${log.cliente}`;
 
                   return (
@@ -412,9 +412,13 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
                       </td>
                       <td className="px-6 py-6">
                         <div className="flex flex-col max-w-[280px]">
-                          <span className="text-slate-900 font-bold text-base tracking-tight leading-snug group-hover:text-blue-600 transition-colors truncate">{mainLabel}</span>
-                          <div className="flex items-center gap-2 mt-1.5">
-                             <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{subLabel1}</span>
+                          <span className={`font-mono text-base font-black tracking-tighter transition-colors truncate ${
+                            activeSubgroup === 'sondas' ? 'text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded border border-blue-100 w-fit' : 'text-slate-900 group-hover:text-blue-600'
+                          }`}>
+                            {mainLabel}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1.5 px-0.5">
+                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{subLabel1}</span>
                              <span className="w-1 h-1 rounded-full bg-slate-200" />
                              <span className="text-[10px] text-slate-400 font-bold truncate">{log.produto}</span>
                           </div>

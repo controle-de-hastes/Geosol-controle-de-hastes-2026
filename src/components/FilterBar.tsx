@@ -153,13 +153,13 @@ export function FilterBar({
               </div>
               
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Sonda</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Equipamento (Tag)</label>
                 <select 
                   value={sondaFilter} 
                   onChange={e => setSondaFilter(e.target.value)} 
                   className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="Todos">Todas as Sondas</option>
+                  <option value="Todos">Todos os Equipamentos</option>
                   {availableSondas.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}

@@ -80,7 +80,7 @@ export function DashboardCards({ data, activeCategory }: DashboardCardsProps) {
       )}
       <Card
         title={isReturn ? "Pedidos Pendentes" : "Top Sonda (Pedidos)"}
-        value={isReturn ? pedidosPendentesCount.toLocaleString() : (topSonda ? topSonda[0] : '-')}
+        value={isReturn ? pedidosPendentesCount.toLocaleString() : (topSonda ? <span className="font-mono text-blue-600 dark:text-blue-400">{topSonda[0]}</span> : '-')}
         icon={isReturn ? <RotateCcw className="w-5 h-5 text-indigo-600" /> : <TrendingUp className="w-5 h-5 text-indigo-600" />}
         subtitle={isReturn 
           ? "Pedidos aguardando retorno parcial/total"

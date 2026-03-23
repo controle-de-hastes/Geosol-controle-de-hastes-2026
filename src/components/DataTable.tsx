@@ -267,9 +267,9 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
           const order = info.row.original;
           const tooltip = `Sonda: ${order.descricao_sonda || '-'}\nModelo: ${order.modelo || '-'}`;
           return (
-            <div className="text-center">
+            <div className="flex justify-center">
               <span 
-                className="text-xs font-semibold text-slate-700 cursor-help border-b border-dotted border-slate-300 hover:text-blue-600 transition-colors"
+                className="px-2.5 py-1 bg-slate-900 text-white rounded-md text-[11px] font-black tracking-tighter cursor-help shadow-sm hover:scale-105 transition-all border border-slate-800"
                 title={tooltip}
               >
                 {info.getValue() as string || order.sonda || '-'}
