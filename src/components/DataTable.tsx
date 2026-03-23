@@ -8,7 +8,7 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { ComputedOrder, Order, Category, ItemType } from '../types';
-import { ArrowUpDown, Edit2, Package, Trash2 } from 'lucide-react';
+import { ArrowUpDown, Edit2, Package, Trash2, RotateCcw } from 'lucide-react';
 
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends import('@tanstack/react-table').RowData> {
@@ -213,16 +213,18 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
 
   const columns: ColumnDef<ComputedOrder>[] = useMemo(() => {
     const allColumns: ColumnDef<ComputedOrder>[] = [
-      { 
-        accessorKey: 'cc', 
-        header: () => <div className="flex flex-col items-center leading-tight"><span>Centro</span><span>Custo</span></div>,
-        cell: (info) => <div className="text-center font-mono text-sm font-medium text-slate-500">{info.getValue() as string}</div>
-      },
-      { 
-        accessorKey: 'cliente', 
-        header: () => <div className="text-center">Cliente</div>,
-        cell: (info) => <div className="text-center font-medium text-slate-900">{info.getValue() as string}</div>
-      },
+      ...(activeCategory !== 'Devolução de Hastes' ? [
+        { 
+          accessorKey: 'cc', 
+          header: () => <div className="flex flex-col items-center leading-tight"><span>Centro</span><span>Custo</span></div>,
+          cell: (info: any) => <div className="text-center font-mono text-sm font-medium text-slate-500">{info.getValue() as string}</div>
+        },
+        { 
+          accessorKey: 'cliente', 
+          header: () => <div className="text-center">Cliente</div>,
+          cell: (info: any) => <div className="text-center font-medium text-slate-900">{info.getValue() as string}</div>
+        }
+      ] : []),
       { 
         accessorKey: 'codigo', 
         header: () => <div className="text-center">Código</div>,
@@ -233,10 +235,30 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
         header: () => <div className="text-center">Produto</div>,
         cell: (info) => <div className="text-center text-slate-600">{info.getValue() as string}</div>
       },
-      { 
-        accessorKey: 'sistema', 
-        header: () => <div className="text-center">Sistema</div>,
-        cell: (info) => <div className="text-center">{info.getValue() as string}</div>
+      ...(activeCategory !== 'Devolução de Hastes' ? [
+        { 
+          accessorKey: 'sistema', 
+          header: () => <div className="text-center">Sistema</div>,
+          cell: (info: any) => <div className="text-center">{info.getValue() as string}</div>
+        }
+      ] : []),
+      {
+        accessorKey: 'tipoPedido',
+        header: () => <div className="text-center">Tipo</div>,
+        cell: (info) => {
+          const val = info.getValue() as string;
+          return (
+            <div className="flex justify-center">
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${
+                val === 'Nova Mobilização' 
+                  ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                  : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+              }`}>
+                {val === 'Nova Mobilização' ? 'Mobilização' : 'Ressuprimento'}
+              </span>
+            </div>
+          );
+        }
       },
       { 
         accessorKey: 'tag', 
@@ -286,24 +308,31 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
           );
         },
       },
-      {
-        accessorKey: 'dataNecessidade',
-        header: () => <div className="flex flex-col items-center leading-tight"><span>Data</span><span>Necessidade</span></div>,
-        cell: (info) => {
-          const value = info.getValue() as string;
-          if (!value) return <div className="text-center text-slate-400">-</div>;
-          const date = new Date(value);
-          return <div className="text-center text-slate-500 text-sm">{date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>;
+      ...(activeCategory !== 'Devolução de Hastes' ? [
+        {
+          accessorKey: 'dataNecessidade',
+          header: () => <div className="flex flex-col items-center leading-tight"><span>Data</span><span>Necessidade</span></div>,
+          cell: (info: any) => {
+            const value = info.getValue() as string;
+            if (!value) return <div className="text-center text-slate-400">-</div>;
+            const date = new Date(value);
+            return <div className="text-center text-slate-500 text-sm">{date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>;
+          },
         },
-      },
-      {
-        accessorKey: 'dataAtendimentoInicio',
-        header: () => <div className="flex flex-col items-center leading-tight"><span>Atend.</span><span>Início</span></div>,
-        cell: (props) => <DateCell {...props} />,
-      },
+        {
+          accessorKey: 'dataAtendimentoInicio',
+          header: () => <div className="flex flex-col items-center leading-tight"><span>Atend.</span><span>Início</span></div>,
+          cell: (props: any) => <DateCell {...props} />,
+        }
+      ] : []),
       {
         accessorKey: 'dataAtendimentoFinal',
-        header: () => <div className="flex flex-col items-center leading-tight"><span>Atend.</span><span>Final</span></div>,
+        header: () => (
+          <div className="flex flex-col items-center leading-tight">
+            <span>{activeCategory === 'Devolução de Hastes' ? 'Data' : 'Atend.'}</span>
+            <span>{activeCategory === 'Devolução de Hastes' ? 'Devolução' : 'Final'}</span>
+          </div>
+        ),
         cell: (props) => <DateCell {...props} />,
       },
       {
@@ -331,6 +360,18 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
         header: '',
         cell: ({ row }) => (
           <div className="flex justify-center gap-1">
+            {row.original.categoria === 'Devolução de Hastes' && row.original.status === 'PENDENTE' && (
+              <button
+                onClick={() => {
+                  table.options.meta?.updateDataById(row.original.id, 'qtdAtendida', row.original.qtdSolicitada);
+                }}
+                className="p-1.5 text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-all flex items-center gap-1"
+                title="Devolver Tudo"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase">Tudo</span>
+              </button>
+            )}
             <button
               onClick={() => onEdit(row.original)}
               className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
@@ -340,7 +381,7 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
             </button>
             <button
               onClick={() => {
-                if (confirm(`Excluir pedido ${row.original.id}? Esta ação não pode ser desfeita.`)) {
+                if (confirm(`Excluir pedido ${row.original.id}? Esta ação não pode ser deifeita.`)) {
                   onDelete(row.original);
                 }
               }}

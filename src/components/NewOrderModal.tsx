@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react';
-import { X, Plus, Save } from 'lucide-react';
+import { X, Plus, Save, AlertCircle, Info } from 'lucide-react';
 import { Order, Category, System, SondaHistorico, Cliente } from '../types';
 import { PRODUCTS, SONDAS } from '../constants';
 import { extractRodLength } from '../lib/excelUtils';
@@ -27,7 +27,7 @@ export function NewOrderModal({
   sondaHistorico,
   clientes
 }: NewOrderModalProps) {
-  const [formData, setFormData] = useState<Omit<Order, 'id' | 'qtdAtendida' | 'dataAtendimentoInicio' | 'dataAtendimentoFinal'>>({
+  const [formData, setFormData] = useState<Omit<Order, 'id' | 'qtdAtendida' | 'dataAtendimentoInicio'>>({
     codigo: '',
     cc: '',
     cliente: '',
@@ -41,9 +41,14 @@ export function NewOrderModal({
     tag: '',
     modelo: '',
     descricao_sonda: '',
+    tipoPedido: (defaultCategory === 'Devolução de Hastes') ? 'Ressuprimento' : 'Nova Mobilização',
+    dataAtendimentoFinal: null,
   });
 
   const [ultimoAtendimento, setUltimoAtendimento] = useState<string | null>(null);
+  const [pendingReturns, setPendingReturns] = useState<{ produto: string; qtd: number }[]>([]);
+  const [showWarningPopup, setShowWarningPopup] = useState(false);
+  const [warningConfirmed, setWarningConfirmed] = useState(false);
 
   useEffect(() => {
     if (formData.tag && formData.tag.trim() && sondaHistorico) {
@@ -71,6 +76,51 @@ export function NewOrderModal({
       setUltimoAtendimento(null);
     }
   }, [formData.tag, sondaHistorico]);
+  
+  const checkPendingReturns = () => {
+    if (formData.tag && formData.tag.trim() && data && formData.categoria !== 'Devolução de Hastes') {
+      const tagTrim = formData.tag.toLowerCase().trim();
+      
+      const returns = data.filter(order => 
+        order.categoria === 'Devolução de Hastes' && 
+        (order.tag || '').toLowerCase().trim() === tagTrim &&
+        (order.qtdSolicitada - (order.qtdAtendida || 0)) > 0
+      );
+
+      if (returns.length > 0) {
+        // Group by product
+        const grouped = returns.reduce((acc, curr) => {
+          const pending = curr.qtdSolicitada - (curr.qtdAtendida || 0);
+          const existing = acc.find(a => a.produto === curr.produto);
+          if (existing) {
+            existing.qtd += pending;
+          } else {
+            acc.push({ produto: curr.produto, qtd: pending });
+          }
+          return acc;
+        }, [] as { produto: string; qtd: number }[]);
+        
+        setPendingReturns(grouped);
+        if (!warningConfirmed) {
+          setShowWarningPopup(true);
+        }
+      } else {
+        setPendingReturns([]);
+        setShowWarningPopup(false);
+      }
+    } else {
+      setPendingReturns([]);
+      setShowWarningPopup(false);
+    }
+  };
+
+  // Reset acknowledgment when modal closes or tag changes significantly (cleared)
+  useEffect(() => {
+    if (!isOpen || !formData.tag) {
+      setWarningConfirmed(false);
+      setShowWarningPopup(false);
+    }
+  }, [isOpen, formData.tag]);
 
   useEffect(() => {
     if (orderToEdit) {
@@ -88,6 +138,8 @@ export function NewOrderModal({
         tag: orderToEdit.tag || '',
         modelo: orderToEdit.modelo || '',
         descricao_sonda: orderToEdit.descricao_sonda || '',
+        tipoPedido: orderToEdit.tipoPedido || 'Nova Mobilização',
+        dataAtendimentoFinal: orderToEdit.dataAtendimentoFinal || null,
       });
     } else {
       setFormData({
@@ -104,6 +156,8 @@ export function NewOrderModal({
         tag: '',
         modelo: '',
         descricao_sonda: '',
+        tipoPedido: (defaultCategory === 'Devolução de Hastes') ? 'Ressuprimento' : 'Nova Mobilização',
+        dataAtendimentoFinal: null,
       });
     }
   }, [orderToEdit, defaultCategory, isOpen]);
@@ -121,11 +175,12 @@ export function NewOrderModal({
     const selectedProduct = PRODUCTS.find(p => p.produto === produtoName);
     if (selectedProduct) {
       setFormData(prev => {
+        const isReturn = prev.categoria === 'Devolução de Hastes';
         const newData = {
           ...prev,
           produto: selectedProduct.produto,
           codigo: selectedProduct.codigo,
-          categoria: selectedProduct.categoria
+          categoria: isReturn ? 'Devolução de Hastes' : selectedProduct.categoria
         };
         if (selectedProduct.categoria.startsWith('Revestimentos') && !newData.tag) {
           newData.tag = 'REVESTIMENTOS';
@@ -146,7 +201,9 @@ export function NewOrderModal({
         ...prev,
         produto: produtoName,
         codigo: '',
-        categoria: defaultCategory === 'Geral' ? 'Hastes Novas' : defaultCategory
+        categoria: prev.categoria === 'Devolução de Hastes' 
+          ? 'Devolução de Hastes' 
+          : (defaultCategory === 'Geral' ? 'Hastes Novas' : defaultCategory)
       }));
     }
   };
@@ -192,7 +249,6 @@ export function NewOrderModal({
         id: `ORD-${Math.floor(Math.random() * 10000)}`,
         qtdAtendida: 0,
         dataAtendimentoInicio: null,
-        dataAtendimentoFinal: null,
       };
       onAdd(newOrder);
     }
@@ -201,7 +257,45 @@ export function NewOrderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
+      {/* PENDING RETURNS MODAL POPUP (OVERLAY) */}
+      {showWarningPopup && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in transition-all">
+          <div className="bg-white rounded-2xl shadow-2xl border border-amber-200 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 text-center mb-2">Devoluções Pendentes!</h2>
+              <p className="text-slate-600 text-center text-xs mb-6">
+                Este equipamento (<strong>{formData.tag}</strong>) possui materiais aguardando retorno.
+              </p>
+              
+              <div className="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-100">
+                <div className="space-y-2">
+                  {pendingReturns.map((ret, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs">
+                      <span className="text-amber-800 font-medium">{ret.produto}</span>
+                      <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-bold">{ret.qtd} un.</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowWarningPopup(false);
+                  setWarningConfirmed(true);
+                }}
+                className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+              >
+                Ciente / Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200 relative">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             {orderToEdit ? (
@@ -221,48 +315,80 @@ export function NewOrderModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Código</label>
-              <input
-                readOnly
-                type="text"
-                value={formData.codigo}
-                className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500 outline-none cursor-not-allowed"
-                placeholder="Auto-preenchido"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Centro de Custo</label>
-              <input
-                required
-                type="text"
-                value={formData.cc}
-                onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="Ex: 1020"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Cliente</label>
-              <input
-                required
-                list="client-list"
-                type="text"
-                value={formData.cliente}
-                onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="Nome do cliente"
-              />
-              <datalist id="client-list">
-                {(clientes || []).map(c => (
-                  <option key={c.id} value={c.nome} />
-                ))}
-              </datalist>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[85vh]">
+          {formData.categoria !== 'Devolução de Hastes' ? (
+            <>
+              {pendingReturns.length > 0 && (
+                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">Atenção: Devoluções Pendentes</p>
+                    <div className="mt-1 space-y-0.5">
+                      {pendingReturns.map((ret, idx) => (
+                        <p key={idx} className="text-xs text-amber-700 font-medium">
+                          • {ret.produto}: <span className="font-bold">{ret.qtd} unidades</span> pendentes de retorno.
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
+              <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Código</label>
+                <input
+                  readOnly
+                  type="text"
+                  value={formData.codigo}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500 outline-none cursor-not-allowed"
+                  placeholder="Auto-preenchido"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Centro de Custo</label>
+                <input
+                  required
+                  type="text"
+                  value={formData.cc}
+                  onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  placeholder="Ex: 1020"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Cliente</label>
+                <input
+                  required
+                  list="client-list"
+                  type="text"
+                  value={formData.cliente}
+                  onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  placeholder="Nome do cliente"
+                />
+                <datalist id="client-list">
+                  {(clientes || []).map(c => (
+                    <option key={c.id} value={c.nome} />
+                  ))}
+                </datalist>
+              </div>
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Código</label>
+                <input
+                  readOnly
+                  type="text"
+                  value={formData.codigo}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500 outline-none cursor-not-allowed"
+                  placeholder="Auto-preenchido"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* SONDA FIELDS - MATCHING SPREADSHEETS (BIDIRECTIONAL) */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
@@ -305,6 +431,7 @@ export function NewOrderModal({
                   list="tag-list"
                   type="text"
                   value={formData.tag}
+                  onBlur={checkPendingReturns}
                   onChange={(e) => {
                     const tagValue = e.target.value.toUpperCase().trim();
                     const selectedSonda = SONDAS.find(s => s.tag.toUpperCase().trim() === tagValue);
@@ -339,36 +466,38 @@ export function NewOrderModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Sistema</label>
-                <select
-                  value={formData.sistema}
-                  onChange={(e) => setFormData({ ...formData, sistema: e.target.value as System })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                >
-                  <option value="Norte">Norte</option>
-                  <option value="Sul">Sul</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Último Atendimento</label>
-                <div className={`w-full px-3 py-2 rounded-lg border h-[42px] flex items-center text-sm font-medium transition-all ${
-                  ultimoAtendimento
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                    : 'bg-white border-slate-200 text-slate-400 italic font-normal'
-                }`}>
-                  {ultimoAtendimento ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                      {ultimoAtendimento}
-                    </span>
-                  ) : (
-                    formData.tag.trim() ? 'Sem histórico registrado' : 'Aguardando equipamento...'
-                  )}
+            {formData.categoria !== 'Devolução de Hastes' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Sistema</label>
+                  <select
+                    value={formData.sistema}
+                    onChange={(e) => setFormData({ ...formData, sistema: e.target.value as System })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  >
+                    <option value="Norte">Norte</option>
+                    <option value="Sul">Sul</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Último Atendimento</label>
+                  <div className={`w-full px-3 py-2 rounded-lg border h-[42px] flex items-center text-sm font-medium transition-all ${
+                    ultimoAtendimento
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-white border-slate-200 text-slate-400 italic font-normal'
+                  }`}>
+                    {ultimoAtendimento ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                        {ultimoAtendimento}
+                      </span>
+                    ) : (
+                      formData.tag.trim() ? 'Sem histórico registrado' : 'Aguardando equipamento...'
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -412,36 +541,78 @@ export function NewOrderModal({
               />
             </div>
           </div>
+          
+          {formData.categoria !== 'Devolução de Hastes' && (
+            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex flex-col gap-3">
+              <label className="text-xs font-bold text-blue-600 uppercase tracking-wider">Tipo de Solicitação</label>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="tipoPedido"
+                    value="Nova Mobilização"
+                    checked={formData.tipoPedido === 'Nova Mobilização'}
+                    onChange={(e) => setFormData({ ...formData, tipoPedido: e.target.value as any })}
+                    className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">Nova Mobilização</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="tipoPedido"
+                    value="Ressuprimento"
+                    checked={formData.tipoPedido === 'Ressuprimento'}
+                    onChange={(e) => setFormData({ ...formData, tipoPedido: e.target.value as any })}
+                    className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                    required
+                  />
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">Ressuprimento</span>
+                </label>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Data Necessidade</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">
+                {formData.categoria === 'Devolução de Hastes' ? 'Data Devolução' : 'Data Necessidade'}
+              </label>
               <input
                 required
                 type="date"
-                value={formData.dataNecessidade}
-                onChange={(e) => setFormData({ ...formData, dataNecessidade: e.target.value })}
+                value={formData.categoria === 'Devolução de Hastes' ? (formData.dataAtendimentoFinal || '') : formData.dataNecessidade}
+                onChange={(e) => {
+                  if (formData.categoria === 'Devolução de Hastes') {
+                    setFormData({ ...formData, dataAtendimentoFinal: e.target.value });
+                  } else {
+                    setFormData({ ...formData, dataNecessidade: e.target.value });
+                  }
+                }}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Profundidade do Furo (m)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.profundidadeFuro || ''}
-                onChange={(e) => {
-                  const depth = e.target.value ? Number(e.target.value) : undefined;
-                  setFormData(prev => ({ ...prev, profundidadeFuro: depth }));
-                  if (depth && formData.produto) {
-                    calculateAndSetQtd(depth, formData.produto);
-                  }
-                }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-300"
-                placeholder="Ex: 150"
-              />
-            </div>
+            {formData.categoria !== 'Devolução de Hastes' && (
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Profundidade do Furo (m)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.profundidadeFuro || ''}
+                  onChange={(e) => {
+                    const depth = e.target.value ? Number(e.target.value) : undefined;
+                    setFormData(prev => ({ ...prev, profundidadeFuro: depth }));
+                    if (depth && formData.produto) {
+                      calculateAndSetQtd(depth, formData.produto);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-300"
+                  placeholder="Ex: 150"
+                />
+              </div>
+            )}
           </div>
 
           <div className="pt-4 flex items-center justify-end gap-3">

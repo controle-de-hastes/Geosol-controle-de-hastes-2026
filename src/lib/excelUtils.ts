@@ -14,7 +14,8 @@ export const TEMPLATE_HEADERS = [
   'Data Necessidade',
   'Data Atend. Início',
   'Data Atend. Final',
-  'Categoria'
+  'Categoria',
+  'Tipo de Pedido'
 ];
 
 export const CLIENTE_HEADERS = [
@@ -57,8 +58,8 @@ export const inferCategoryFromProduct = (product: string): string => {
 
 export const downloadExcelTemplate = () => {
   const exampleRows = [
-    ['PRD-001', '1020-00', 'CLIENTE EXEMPLO', 'Norte', 'SONDA 01', '2101', 'R-50', 'HASTE HQ 3M', '10', '2024-03-25', 'Hastes Novas'],
-    ['PRD-002', '1020-00', 'CLIENTE EXEMPLO', 'Sul', 'SONDA 02', '2102', 'MACH-700', 'HASTE NQ USADA', '5', '2024-03-26', 'Hastes Usadas']
+    ['PRD-001', '1020-00', 'CLIENTE EXEMPLO', 'Norte', 'SONDA 01', '2101', 'R-50', 'HASTE HQ 3M', '10', '0', '2024-03-25', 'Hastes Novas', 'Nova Mobilização'],
+    ['PRD-002', '1020-00', 'CLIENTE EXEMPLO', 'Sul', 'SONDA 02', '2102', 'MACH-700', 'HASTE NQ USADA', '5', '0', '2024-03-26', 'Hastes Usadas', 'Ressuprimento']
   ];
 
   const wsData = [TEMPLATE_HEADERS, ...exampleRows];
@@ -102,6 +103,8 @@ export interface ExportOrder {
   profundidadeFuro?: number;
   tag?: string;
   modelo?: string;
+  descricao_sonda?: string;
+  tipoPedido: string;
 }
 
 export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
@@ -121,7 +124,8 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     'Data Necessidade',
     'Data Atend. Início',
     'Data Atend. Final',
-    'Profund. do Furo (m)'
+    'Profund. do Furo (m)',
+    'Tipo'
   ];
 
   const rows = orders.map(o => [
@@ -140,7 +144,8 @@ export const exportOrdersToExcel = (orders: ExportOrder[], label?: string) => {
     o.dataNecessidade || '',
     o.dataAtendimentoInicio || '',
     o.dataAtendimentoFinal || '',
-    o.profundidadeFuro || '-'
+    o.profundidadeFuro || '-',
+    o.tipoPedido || 'Nova Mobilização'
   ]);
 
   const wsData = [headers, ...rows];

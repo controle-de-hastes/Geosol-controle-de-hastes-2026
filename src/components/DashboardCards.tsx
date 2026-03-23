@@ -1,12 +1,14 @@
 import { ComputedOrder } from '../types';
-import { Package, MapPin, TrendingUp, AlertCircle } from 'lucide-react';
+import { Package, MapPin, TrendingUp, AlertCircle, AlertTriangle, RotateCcw } from 'lucide-react';
 import { ReactNode } from 'react';
 
 interface DashboardCardsProps {
   data: ComputedOrder[];
+  activeCategory: string;
 }
 
-export function DashboardCards({ data }: DashboardCardsProps) {
+export function DashboardCards({ data, activeCategory }: DashboardCardsProps) {
+  const isReturn = activeCategory === 'Devolução de Hastes';
   // 1. Total de Hastes Pendentes (Geral)
   const totalPendentes = data.reduce((acc, order) => acc + order.qtdPendente, 0);
 
@@ -29,6 +31,19 @@ export function DashboardCards({ data }: DashboardCardsProps) {
   const topSonda = Object.entries(sondasVolume)
     .sort((a, b) => b[1] - a[1])[0];
 
+  // 3b. Sondas com mais PENDÊNCIA (Volume físico pendente) - específico para Devolução
+  const pendingBySonda = data.reduce((acc, order) => {
+    const s = order.tag || order.sonda || 'Não identificada';
+    acc[s] = (acc[s] || 0) + order.qtdPendente;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const topPendingSonda = Object.entries(pendingBySonda)
+    .sort((a, b) => b[1] - a[1])[0];
+
+  // 3c. Contagem de pedidos com pendência real
+  const pedidosPendentesCount = data.filter(o => o.qtdPendente > 0).length;
+
   // 4. Taxa de atendimento (%)
   const totalSolicitado = data.reduce((acc, order) => acc + order.qtdSolicitada, 0);
   const totalAtendido = data.reduce((acc, order) => acc + order.qtdAtendida, 0);
@@ -37,10 +52,10 @@ export function DashboardCards({ data }: DashboardCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <Card
-        title="Total Pendente"
+        title={isReturn ? "Retorno Pendente" : "Total Pendente"}
         value={totalPendentes.toLocaleString()}
         icon={<Package className="w-5 h-5 text-amber-600" />}
-        subtitle="Hastes aguardando envio"
+        subtitle={isReturn ? "Hastes aguardando devolução" : "Hastes aguardando envio"}
         color="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20"
       />
       <Card
@@ -62,17 +77,20 @@ export function DashboardCards({ data }: DashboardCardsProps) {
         color="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20"
       />
       <Card
-        title="Top Sonda (Volume de Pedidos)"
-        value={topSonda ? topSonda[0] : '-'}
-        icon={<TrendingUp className="w-5 h-5 text-indigo-600" />}
-        subtitle={topSonda ? `${topSonda[1]} pedidos registrados` : 'Sem pedidos'}
+        title={isReturn ? "Pedidos Pendentes" : "Top Sonda (Pedidos)"}
+        value={isReturn ? pedidosPendentesCount.toLocaleString() : (topSonda ? topSonda[0] : '-')}
+        icon={isReturn ? <RotateCcw className="w-5 h-5 text-indigo-600" /> : <TrendingUp className="w-5 h-5 text-indigo-600" />}
+        subtitle={isReturn 
+          ? "Pedidos aguardando retorno parcial/total"
+          : (topSonda ? `${topSonda[1]} pedidos registrados` : 'Sem pedidos')
+        }
         color="border-indigo-200 bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-950/20"
       />
       <Card
-        title="Taxa de Atendimento"
+        title={isReturn ? "Taxa de Devolução" : "Taxa de Atendimento"}
         value={`${taxaAtendimento}%`}
         icon={<AlertCircle className="w-5 h-5 text-emerald-600" />}
-        subtitle="Volume geral entregue"
+        subtitle={isReturn ? "Volume geral devolvido" : "Volume geral entregue"}
         color="border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20"
       />
     </div>

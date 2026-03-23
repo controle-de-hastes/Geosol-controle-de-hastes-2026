@@ -43,6 +43,7 @@ export default function App() {
   const [density, setDensity] = useState<'standard' | 'compact'>(() => {
     return (localStorage.getItem('geosol_density') as 'standard' | 'compact') || 'standard';
   });
+  const [creationCategory, setCreationCategory] = useState<Category | 'Geral'>('Geral');
 
   // Apply theme to <html> element
   const applyTheme = useCallback((selectedTheme: 'light' | 'dark' | 'system') => {
@@ -102,6 +103,7 @@ export default function App() {
         tag: o.tag,
         modelo: o.modelo,
         descricao_sonda: o.descricao_sonda,
+        tipoPedido: o.tipo_pedido,
       }));
 
       setData(mappedOrders);
@@ -294,6 +296,7 @@ export default function App() {
             tag: o.tag,
             modelo: o.modelo,
             descricao_sonda: o.descricao_sonda,
+            tipoPedido: o.tipo_pedido,
           });
 
           if (payload.eventType === 'INSERT') {
@@ -364,7 +367,9 @@ export default function App() {
   // Filter data based on sidebar, search, and system filter
   const filteredData = useMemo(() => {
     const filtered = computedData.filter((order) => {
-      const matchesCategory = activeCategory === 'Geral' || order.categoria === activeCategory;
+      const matchesCategory = activeCategory === 'Geral' 
+        ? order.categoria !== 'Devolução de Hastes'
+        : order.categoria === activeCategory;
       const matchesType = 
         typeFilter === 'Todas' ||
         (typeFilter === 'Hastes' && order.categoria.startsWith('Hastes')) ||
@@ -466,6 +471,7 @@ export default function App() {
         tag: newOrder.tag,
         modelo: newOrder.modelo,
         descricao_sonda: newOrder.descricao_sonda,
+        tipo_pedido: newOrder.tipoPedido,
       };
 
       const { error } = await supabase.from('orders').insert([dbOrder]);
@@ -473,6 +479,36 @@ export default function App() {
 
       setData((prev) => [newOrder, ...prev]);
       addHistory(`Novo pedido ${newOrder.id} criado para ${newOrder.cliente}.`, 'CREATE');
+
+      // Auto-create return order for Resupply (only if the order itself is NOT a return)
+      if (newOrder.tipoPedido === 'Ressuprimento' && newOrder.categoria !== 'Devolução de Hastes') {
+        const returnOrderId = `RET-${Math.floor(Math.random() * 10000)}`;
+        const returnOrder: Order = {
+          ...newOrder,
+          id: returnOrderId,
+          categoria: 'Devolução de Hastes',
+          qtdAtendida: 0,
+          dataAtendimentoInicio: null,
+          dataAtendimentoFinal: null,
+        };
+
+        const dbReturnOrder = {
+          ...dbOrder,
+          id: returnOrder.id,
+          categoria: 'Devolução de Hastes',
+          qtd_atendida: 0,
+          data_atendimento_inicio: null,
+          data_atendimento_final: null,
+        };
+
+        const { error: retError } = await supabase.from('orders').insert([dbReturnOrder]);
+        if (!retError) {
+          setData((prev) => [returnOrder, ...prev]);
+          addHistory(`Pedido de devolução automática ${returnOrder.id} criado para ${returnOrder.cliente}.`, 'CREATE');
+        } else {
+          console.error('Erro ao criar pedido de devolução:', retError);
+        }
+      }
     } catch (err) {
       console.error('Erro ao criar pedido no banco:', err);
     }
@@ -498,6 +534,7 @@ export default function App() {
         tag: o.tag,
         modelo: o.modelo,
         descricao_sonda: o.descricao_sonda,
+        tipo_pedido: o.tipoPedido,
       }));
 
       const { error } = await supabase.from('orders').insert(dbOrders);
@@ -582,6 +619,7 @@ export default function App() {
         tag: updatedOrder.tag,
         modelo: updatedOrder.modelo,
         descricao_sonda: updatedOrder.descricao_sonda,
+        tipo_pedido: updatedOrder.tipoPedido,
       };
 
       const { error } = await supabase.from('orders').update(dbOrder).eq('id', updatedOrder.id);
@@ -701,7 +739,11 @@ export default function App() {
           onOpenSettings={() => setIsSettingsModalOpen(true)}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          onNewOrder={() => {
+          onNewOrder={(cat) => {
+            // Se cat não for passado (clique no botão padrão), e estivermos na aba de devolução, 
+            // forçamos a volta para a categoria Geral (ou a atual se não for devolução)
+            const targetCat = cat || (activeCategory === 'Devolução de Hastes' ? 'Geral' : activeCategory);
+            setCreationCategory(targetCat);
             setOrderToEdit(null);
             setIsModalOpen(true);
           }}
@@ -746,12 +788,12 @@ export default function App() {
                   </div>
 
                   <div className="shrink-0">
-                    <DashboardCards data={filteredData} />
+                    <DashboardCards data={filteredData} activeCategory={activeCategory} />
                   </div>
                   
-                  {activeCategory === 'Geral' && (
+                  {(activeCategory === 'Geral' || activeCategory === 'Devolução de Hastes') && (
                     <div className="shrink-0">
-                      <Charts data={filteredData} />
+                      <Charts data={filteredData} activeCategory={activeCategory} />
                     </div>
                   )}
 
@@ -795,7 +837,7 @@ export default function App() {
         onClose={closeOrderModal}
         onAdd={handleAddOrder}
         onEdit={handleEditOrder}
-        defaultCategory={activeCategory}
+        defaultCategory={creationCategory}
         orderToEdit={orderToEdit}
         data={data}
         sondaHistorico={sondaHistorico}

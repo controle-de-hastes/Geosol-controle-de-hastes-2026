@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, ReactNode } from 'react';
 import { Category, Profile, ViewMode, HistorySubgroup } from '../types';
-import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield, FileSpreadsheet } from 'lucide-react';
+import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { supabase } from '../lib/supabase';
 import { downloadExcelTemplate, exportOrdersToExcel } from '../lib/excelUtils';
@@ -12,7 +12,7 @@ interface TopBarProps {
   onOpenSettings: () => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  onNewOrder: () => void;
+  onNewOrder: (category?: Category | 'Geral') => void;
   onImportClick: () => void;
   profile: Profile | null;
   exportData?: ExportOrder[];
@@ -111,6 +111,22 @@ export function TopBar({
         >
           <BarChart3 className="w-4 h-4 shrink-0" />
           <span>Visão Geral</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setViewMode('management');
+            setActiveCategory('Devolução de Hastes');
+            setIsHastesOpen(false);
+          }}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+            viewMode === 'management' && activeCategory === 'Devolução de Hastes'
+              ? 'bg-amber-600/10 text-amber-500'
+              : 'hover:bg-slate-800 hover:text-white text-slate-400'
+          }`}
+        >
+          <RotateCcw className="w-4 h-4 shrink-0" />
+          <span>Devolução de Hastes</span>
         </button>
 
         {/* Hastes Dropdown */}
@@ -293,6 +309,12 @@ export function TopBar({
                 className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-4 h-4" /> Novo Pedido
+              </button>
+              <button 
+                onClick={() => { onNewOrder('Devolução de Hastes'); setIsActionsOpen(false); }} 
+                className="w-full text-left px-4 py-2 text-sm font-medium text-amber-400 hover:bg-slate-700 hover:text-amber-300 flex items-center gap-2 transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" /> Novo Pedido Devolução
               </button>
               <button 
                 onClick={() => { onImportClick(); setIsActionsOpen(false); }} 

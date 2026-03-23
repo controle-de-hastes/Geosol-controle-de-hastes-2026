@@ -1,5 +1,5 @@
 export type System = 'Norte' | 'Sul';
-export type Category = 'Hastes Novas' | 'Hastes Usadas' | 'Hastes Recuperadas' | 'Revestimentos HW' | 'Revestimentos NW';
+export type Category = 'Hastes Novas' | 'Hastes Usadas' | 'Hastes Recuperadas' | 'Revestimentos HW' | 'Revestimentos NW' | 'Devolução de Hastes';
 export type ItemType = 'Todas' | 'Hastes' | 'Revestimento';
 export type ViewMode = 'management' | 'history';
 export type HistorySubgroup = 'sondas' | 'clientes' | 'cc' | 'sistema' | 'eventos';
@@ -19,6 +19,7 @@ export interface Order {
   dataAtendimentoFinal: string | null; // ISO date string or null
   categoria: Category;
   profundidadeFuro?: number;
+  tipoPedido: 'Nova Mobilização' | 'Ressuprimento';
   tag?: string; // We'll keep this as a duplicate for now to avoid breaking changes, but prefer 'sonda' for the equipment code
   modelo?: string;
   descricao_sonda?: string;

@@ -137,6 +137,7 @@ export function ImportModal({ isOpen, onClose, onImport, data, clientes }: Impor
             dataAtendimentoInicio,
             dataAtendimentoFinal,
             categoria,
+            tipoPedido: (row['Tipo de Pedido']?.toString().trim() === 'Ressuprimento') ? 'Ressuprimento' : 'Nova Mobilização',
             profundidadeFuro: Number(row['Profundidade'] || row['Profund.']) || (() => {
                const rodLength = extractRodLength(produto);
                return rodLength ? qtdSolicitada * rodLength : undefined;

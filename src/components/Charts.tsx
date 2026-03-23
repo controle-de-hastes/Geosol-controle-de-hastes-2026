@@ -5,16 +5,48 @@ import { ChevronLeft } from 'lucide-react';
 
 interface ChartsProps {
   data: ComputedOrder[];
+  activeCategory?: string;
 }
 
-export function Charts({ data }: ChartsProps) {
+export function Charts({ data, activeCategory }: ChartsProps) {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const isReturnMode = activeCategory === 'Devolução de Hastes';
 
   // Filter and aggregate data based on drill-down state
   const { aggregatedData, chartTitle, currentDataKey } = useMemo(() => {
+    if (isReturnMode) {
+      // Aggregate by Sonda (Equipamento) directly for Return mode
+      const aggregated = data.reduce((acc, order) => {
+        const label = order.tag && order.tag !== order.sonda 
+          ? `${order.tag} - ${order.sonda}`
+          : (order.tag || order.sonda || 'Não Informada');
+          
+        const existing = acc.find((item) => item.label === label);
+        if (existing) {
+          existing.solicitado += order.qtdSolicitada;
+          existing.atendido += order.qtdAtendida;
+        } else {
+          acc.push({
+            label,
+            solicitado: order.qtdSolicitada,
+            atendido: order.qtdAtendida,
+          });
+        }
+        return acc;
+      }, [] as { label: string; solicitado: number; atendido: number }[]);
+
+      return {
+        aggregatedData: aggregated,
+        chartTitle: 'Desempenho de Retorno por Equipamento',
+        currentDataKey: 'label'
+      };
+    }
+
+    const activeData = data.filter(d => d.categoria !== 'Devolução de Hastes');
+
     if (selectedClient) {
-      // Aggregate by Sonda for the specific client
-      const filtered = data.filter(d => 
+      // ... (rest of client drill-down)
+      const filtered = activeData.filter(d => 
         d.cliente === selectedClient
       );
       const aggregated = filtered.reduce((acc, order) => {
@@ -43,7 +75,7 @@ export function Charts({ data }: ChartsProps) {
       };
     } else {
       // Aggregate by Cliente
-      const aggregated = data.reduce((acc, order) => {
+      const aggregated = activeData.reduce((acc, order) => {
         const existing = acc.find((item) => item.label === order.cliente);
         if (existing) {
           existing.solicitado += order.qtdSolicitada;
@@ -64,7 +96,7 @@ export function Charts({ data }: ChartsProps) {
         currentDataKey: 'label'
       };
     }
-  }, [data, selectedClient]);
+  }, [data, selectedClient, isReturnMode]);
 
   const handleBarClick = (state: any) => {
     if (!selectedClient && state && state.activeLabel) {
@@ -147,8 +179,8 @@ export function Charts({ data }: ChartsProps) {
             />
             <Bar 
               dataKey="atendido" 
-              name="Qtd Atendida" 
-              fill="#3B82F6" 
+              name={isReturnMode ? "Qtd Devolvida" : "Qtd Atendida"} 
+              fill={isReturnMode ? "#10B981" : "#3B82F6"} 
               radius={[6, 6, 0, 0]} 
               barSize={aggregatedData.length > 5 ? 24 : 36}
               className="hover:opacity-100 transition-opacity"
