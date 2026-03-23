@@ -58,24 +58,26 @@ export function DashboardCards({ data, activeCategory }: DashboardCardsProps) {
         subtitle={isReturn ? "Hastes aguardando devolução" : "Hastes aguardando envio"}
         color="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20"
       />
-      <Card
-        title="Pendências por Sistema"
-        value={
-          <div className="flex flex-col gap-1.5 text-lg mt-1">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0 shadow-sm"></span>
-              <span>{pendentesNorte.toLocaleString()} Norte</span>
+      {!isReturn && (
+        <Card
+          title="Pendências por Sistema"
+          value={
+            <div className="flex flex-col gap-1.5 text-lg mt-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0 shadow-sm"></span>
+                <span>{pendentesNorte.toLocaleString()} Norte</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0 shadow-sm"></span>
+                <span>{pendentesSul.toLocaleString()} Sul</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0 shadow-sm"></span>
-              <span>{pendentesSul.toLocaleString()} Sul</span>
-            </div>
-          </div>
-        }
-        icon={<MapPin className="w-5 h-5 text-blue-600" />}
-        subtitle="Distribuição regional"
-        color="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20"
-      />
+          }
+          icon={<MapPin className="w-5 h-5 text-blue-600" />}
+          subtitle="Distribuição regional"
+          color="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20"
+        />
+      )}
       <Card
         title={isReturn ? "Pedidos Pendentes" : "Top Sonda (Pedidos)"}
         value={isReturn ? pedidosPendentesCount.toLocaleString() : (topSonda ? topSonda[0] : '-')}

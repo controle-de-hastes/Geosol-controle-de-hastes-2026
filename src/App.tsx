@@ -355,14 +355,28 @@ export default function App() {
   }, [data]);
 
   const availableClients = useMemo(() => {
-    const clients = new Set(data.map(d => d.cliente));
+    const filtered = data.filter(d => 
+      activeCategory === 'Geral' ? d.categoria !== 'Devolução de Hastes' : d.categoria === activeCategory
+    );
+    const clients = new Set(filtered.map(d => d.cliente).filter(Boolean));
     return Array.from(clients).sort();
-  }, [data]);
+  }, [data, activeCategory]);
 
   const availableSondas = useMemo(() => {
-    const sondas = new Set(data.map(d => d.sonda));
+    const filtered = data.filter(d => 
+      activeCategory === 'Geral' ? d.categoria !== 'Devolução de Hastes' : d.categoria === activeCategory
+    );
+    const sondas = new Set(filtered.map(d => d.sonda).filter(Boolean));
     return Array.from(sondas).sort();
-  }, [data]);
+  }, [data, activeCategory]);
+
+  const availableSystems = useMemo(() => {
+    const filtered = data.filter(d => 
+      activeCategory === 'Geral' ? d.categoria !== 'Devolução de Hastes' : d.categoria === activeCategory
+    );
+    const systems = new Set(filtered.map(d => d.sistema).filter(Boolean));
+    return Array.from(systems).sort();
+  }, [data, activeCategory]);
 
   // Filter data based on sidebar, search, and system filter
   const filteredData = useMemo(() => {
@@ -757,8 +771,10 @@ export default function App() {
           setHistorySubgroup={setActiveHistorySubgroup}
         />
         <FilterBar
+          activeCategory={activeCategory}
           systemFilter={systemFilter}
           setSystemFilter={setSystemFilter}
+          availableSystems={availableSystems}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
           sondaFilter={sondaFilter}

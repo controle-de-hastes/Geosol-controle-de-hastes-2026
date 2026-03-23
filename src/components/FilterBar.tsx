@@ -13,6 +13,8 @@ interface FilterBarProps {
   clientFilter: string;
   setClientFilter: (client: string) => void;
   availableClients: string[];
+  availableSystems: string[];
+  activeCategory: string;
   typeFilter: ItemType;
   setTypeFilter: (type: ItemType) => void;
 }
@@ -28,9 +30,12 @@ export function FilterBar({
   clientFilter,
   setClientFilter,
   availableClients,
+  availableSystems,
+  activeCategory,
   typeFilter,
   setTypeFilter,
 }: FilterBarProps) {
+  const isReturn = activeCategory === 'Devolução de Hastes';
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
 
@@ -89,45 +94,50 @@ export function FilterBar({
                 )}
               </div>
               
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tipo de Equipamento</label>
-                <select 
-                  value={typeFilter} 
-                  onChange={e => setTypeFilter(e.target.value as ItemType)} 
-                  className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="Todas">Hastes & Revestimentos</option>
-                  <option value="Hastes">Apenas Hastes</option>
-                  <option value="Revestimento">Apenas Revestimentos</option>
-                </select>
-              </div>
+              {!isReturn && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tipo de Equipamento</label>
+                    <select 
+                      value={typeFilter} 
+                      onChange={e => setTypeFilter(e.target.value as ItemType)} 
+                      className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="Todas">Hastes & Revestimentos</option>
+                      <option value="Hastes">Apenas Hastes</option>
+                      <option value="Revestimento">Apenas Revestimentos</option>
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Sistema</label>
-                <select 
-                  value={systemFilter} 
-                  onChange={e => setSystemFilter(e.target.value as any)} 
-                  className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="Todos">Todos os Sistemas</option>
-                  <option value="Norte">Norte</option>
-                  <option value="Sul">Sul</option>
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Sistema</label>
+                    <select 
+                      value={systemFilter} 
+                      onChange={e => setSystemFilter(e.target.value as any)} 
+                      className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="Todos">Todos os Sistemas</option>
+                      {availableSystems.map(s => (
+                        <option key={s} value={s as any}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Cliente</label>
-                <select 
-                  value={clientFilter} 
-                  onChange={e => setClientFilter(e.target.value)} 
-                  className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="Todos">Todos os Clientes</option>
-                  {availableClients.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Cliente</label>
+                    <select 
+                      value={clientFilter} 
+                      onChange={e => setClientFilter(e.target.value)} 
+                      className="w-full text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="Todos">Todos os Clientes</option>
+                      {availableClients.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
               
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">Status</label>
