@@ -242,24 +242,6 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
           cell: (info: any) => <div className="text-center">{info.getValue() as string}</div>
         }
       ] : []),
-      {
-        accessorKey: 'tipoPedido',
-        header: () => <div className="text-center">Tipo</div>,
-        cell: (info) => {
-          const val = info.getValue() as string;
-          return (
-            <div className="flex justify-center">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${
-                val === 'Nova Mobilização' 
-                  ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                  : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-              }`}>
-                {val === 'Nova Mobilização' ? 'Mobilização' : 'Ressuprimento'}
-              </span>
-            </div>
-          );
-        }
-      },
       { 
         accessorKey: 'tag', 
         header: () => <div className="text-center">TAG</div>,
@@ -269,7 +251,7 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
           return (
             <div className="flex justify-center">
               <span 
-                className="px-2.5 py-1 bg-slate-900 text-white rounded-md text-[11px] font-black tracking-tighter cursor-help shadow-sm hover:scale-105 transition-all border border-slate-800"
+                className="text-xs font-semibold text-slate-700 cursor-help border-b border-dotted border-slate-300 hover:text-blue-600 transition-colors"
                 title={tooltip}
               >
                 {info.getValue() as string || order.sonda || '-'}
@@ -334,6 +316,24 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
           </div>
         ),
         cell: (props) => <DateCell {...props} />,
+      },
+      {
+        accessorKey: 'tipoPedido',
+        header: () => <div className="text-center">Tipo</div>,
+        cell: (info) => {
+          const val = info.getValue() as string;
+          return (
+            <div className="flex justify-center">
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${
+                val === 'Nova Mobilização' 
+                  ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                  : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+              }`}>
+                {val === 'Nova Mobilização' ? 'Mobilização' : 'Ressuprimento'}
+              </span>
+            </div>
+          );
+        }
       },
       {
         accessorKey: 'status',
