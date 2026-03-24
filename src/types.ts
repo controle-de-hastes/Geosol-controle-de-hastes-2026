@@ -23,6 +23,8 @@ export interface Order {
   tag?: string; // We'll keep this as a duplicate for now to avoid breaking changes, but prefer 'sonda' for the equipment code
   modelo?: string;
   descricao_sonda?: string;
+  sa?: string;
+  notaFiscal?: string;
 }
 
 export interface ComputedOrder extends Order {

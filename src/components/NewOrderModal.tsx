@@ -30,18 +30,19 @@ export function NewOrderModal({
   const [formData, setFormData] = useState<Omit<Order, 'id' | 'qtdAtendida' | 'dataAtendimentoInicio'>>({
     codigo: '',
     cc: '',
+    sa: '',
     cliente: '',
-    sistema: 'Norte',
+    sistema: '' as any,
     sonda: '',
     produto: '',
-    qtdSolicitada: 1,
-    dataNecessidade: new Date().toISOString().split('T')[0],
+    qtdSolicitada: undefined as any,
+    dataNecessidade: '',
     categoria: defaultCategory === 'Geral' ? 'Hastes Novas' : defaultCategory,
     profundidadeFuro: undefined,
     tag: '',
     modelo: '',
     descricao_sonda: '',
-    tipoPedido: (defaultCategory === 'Devolução de Hastes') ? 'Ressuprimento' : 'Nova Mobilização',
+    tipoPedido: '' as any,
     dataAtendimentoFinal: null,
   });
 
@@ -127,6 +128,7 @@ export function NewOrderModal({
       setFormData({
         codigo: orderToEdit.codigo,
         cc: orderToEdit.cc,
+        sa: orderToEdit.sa || '',
         cliente: orderToEdit.cliente,
         sistema: orderToEdit.sistema,
         sonda: orderToEdit.sonda, // This stores the Tag/Equipamento code
@@ -145,18 +147,19 @@ export function NewOrderModal({
       setFormData({
         codigo: '',
         cc: '',
+        sa: '',
         cliente: '',
-        sistema: 'Norte',
+        sistema: '' as any,
         sonda: '',
         produto: '',
-        qtdSolicitada: 1,
-        dataNecessidade: new Date().toISOString().split('T')[0],
+        qtdSolicitada: undefined as any,
+        dataNecessidade: '',
         categoria: defaultCategory === 'Geral' ? 'Hastes Novas' : defaultCategory,
         profundidadeFuro: undefined,
         tag: '',
         modelo: '',
         descricao_sonda: '',
-        tipoPedido: (defaultCategory === 'Devolução de Hastes') ? 'Ressuprimento' : 'Nova Mobilização',
+        tipoPedido: (defaultCategory === 'Devolução de Hastes') ? 'Ressuprimento' : ('' as any),
         dataAtendimentoFinal: null,
       });
     }
@@ -238,6 +241,11 @@ export function NewOrderModal({
       return;
     }
 
+    if (!formData.tipoPedido && formData.categoria !== 'Devolução de Hastes') {
+      alert('Por favor, selecione o Tipo de Solicitação.');
+      return;
+    }
+
     if (orderToEdit && onEdit) {
       onEdit({
         ...orderToEdit,
@@ -306,7 +314,7 @@ export function NewOrderModal({
             ) : (
               <>
                 <Plus className="w-5 h-5 text-blue-600" />
-                Novo Pedido de Haste
+                {formData.categoria === 'Devolução de Hastes' ? 'Novo Pedido de Devolução' : 'Novo Pedido'}
               </>
             )}
           </h3>
@@ -334,15 +342,16 @@ export function NewOrderModal({
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Código</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">SA</label>
                 <input
-                  readOnly
+                  required
                   type="text"
-                  value={formData.codigo}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500 outline-none cursor-not-allowed"
-                  placeholder="Auto-preenchido"
+                  value={formData.sa}
+                  onChange={(e) => setFormData({ ...formData, sa: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  placeholder="Ex: 123456"
                 />
               </div>
               <div className="space-y-1">
@@ -375,20 +384,7 @@ export function NewOrderModal({
               </div>
               </div>
             </>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Código</label>
-                <input
-                  readOnly
-                  type="text"
-                  value={formData.codigo}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500 outline-none cursor-not-allowed"
-                  placeholder="Auto-preenchido"
-                />
-              </div>
-            </div>
-          )}
+          ) : null}
 
           {/* SONDA FIELDS - MATCHING SPREADSHEETS (BIDIRECTIONAL) */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
@@ -471,10 +467,12 @@ export function NewOrderModal({
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Sistema</label>
                   <select
+                    required
                     value={formData.sistema}
                     onChange={(e) => setFormData({ ...formData, sistema: e.target.value as System })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
                   >
+                    <option value="">Selecione...</option>
                     <option value="Norte">Norte</option>
                     <option value="Sul">Sul</option>
                   </select>
@@ -500,8 +498,18 @@ export function NewOrderModal({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-1 md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_120px] gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Código</label>
+              <input
+                readOnly
+                type="text"
+                value={formData.codigo}
+                className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500 outline-none cursor-not-allowed"
+                placeholder="Auto-preenchido"
+              />
+            </div>
+            <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Produto</label>
               <select
                 required
@@ -523,21 +531,24 @@ export function NewOrderModal({
                 required
                 type="number"
                 min="1"
-                value={formData.qtdSolicitada}
+                value={formData.qtdSolicitada || ''}
                 onChange={(e) => {
-                  const qtd = Number(e.target.value);
+                  const qtdVal = e.target.value;
+                  const qtd = qtdVal === '' ? undefined : Number(qtdVal);
                   const rodLength = formData.produto ? extractRodLength(formData.produto) : null;
-                  if (rodLength && rodLength > 0 && qtd > 0) {
+                  
+                  if (qtd && rodLength && rodLength > 0 && qtd > 0) {
                     setFormData(prev => ({
                       ...prev,
-                      qtdSolicitada: qtd,
+                      qtdSolicitada: qtd as number,
                       profundidadeFuro: parseFloat((qtd * rodLength).toFixed(2))
                     }));
                   } else {
-                    setFormData(prev => ({ ...prev, qtdSolicitada: qtd }));
+                    setFormData(prev => ({ ...prev, qtdSolicitada: qtd as any }));
                   }
                 }}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Ex: 50"
               />
             </div>
           </div>
@@ -597,6 +608,7 @@ export function NewOrderModal({
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">Profundidade do Furo (m)</label>
                 <input
+                  required
                   type="number"
                   step="0.01"
                   min="0"

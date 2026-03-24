@@ -104,6 +104,8 @@ export default function App() {
         modelo: o.modelo,
         descricao_sonda: o.descricao_sonda,
         tipoPedido: o.tipo_pedido,
+        sa: o.sa,
+        nota_fiscal: o.nota_fiscal,
       }));
 
       setData(mappedOrders);
@@ -297,6 +299,8 @@ export default function App() {
             modelo: o.modelo,
             descricao_sonda: o.descricao_sonda,
             tipoPedido: o.tipo_pedido,
+            sa: o.sa,
+            notaFiscal: o.nota_fiscal,
           });
 
           if (payload.eventType === 'INSERT') {
@@ -439,10 +443,13 @@ export default function App() {
         // Map common camelCase to snake_case for standard fields if needed
         const mapping: Record<string, string> = {
           dataNecessidade: 'data_necessidade',
-          profundidadeFuro: 'profundidade_furo'
+          profundidadeFuro: 'profundidade_furo',
+          notaFiscal: 'nota_fiscal'
         };
         dbUpdates[mapping[columnId] || columnId] = value;
       }
+
+      console.log(`Updating ${columnId} for item ${id} with value:`, value, 'DB updates:', dbUpdates);
 
       const { error } = await supabase.from('orders').update(dbUpdates).eq('id', id);
       if (error) throw error;
@@ -460,8 +467,9 @@ export default function App() {
         await recordSondaAtendimento(updatedRow);
       }
       addHistory(`Pedido ${id} atualizado (${columnId}).`, 'UPDATE');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao atualizar no banco:', err);
+      alert('Erro ao atualizar no banco: ' + (err.message || String(err)));
     }
   }, [data, recordSondaAtendimento, addHistory]);
 
@@ -486,6 +494,8 @@ export default function App() {
         modelo: newOrder.modelo,
         descricao_sonda: newOrder.descricao_sonda,
         tipo_pedido: newOrder.tipoPedido,
+        sa: newOrder.sa,
+        nota_fiscal: newOrder.notaFiscal,
       };
 
       const { error } = await supabase.from('orders').insert([dbOrder]);
@@ -549,6 +559,8 @@ export default function App() {
         modelo: o.modelo,
         descricao_sonda: o.descricao_sonda,
         tipo_pedido: o.tipoPedido,
+        sa: o.sa,
+        nota_fiscal: o.notaFiscal,
       }));
 
       const { error } = await supabase.from('orders').insert(dbOrders);
@@ -634,6 +646,8 @@ export default function App() {
         modelo: updatedOrder.modelo,
         descricao_sonda: updatedOrder.descricao_sonda,
         tipo_pedido: updatedOrder.tipoPedido,
+        sa: updatedOrder.sa,
+        nota_fiscal: updatedOrder.notaFiscal,
       };
 
       const { error } = await supabase.from('orders').update(dbOrder).eq('id', updatedOrder.id);

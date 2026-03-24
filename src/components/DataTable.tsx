@@ -27,6 +27,46 @@ interface EditableCellProps {
   table: any;
 }
 
+function EditableTextCell({ getValue, row, column: { id }, table }: EditableCellProps) {
+  const initialValue = getValue() as string;
+  const [value, setValue] = useState(initialValue || '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setValue(initialValue || '');
+  }, [initialValue]);
+
+  const onBlur = () => {
+    if (value !== initialValue) {
+      table.options.meta?.updateDataById(row.original.id, id, value);
+    }
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      inputRef.current?.blur();
+    }
+    if (e.key === 'Escape') {
+      setValue(initialValue || '');
+      inputRef.current?.blur();
+    }
+  };
+
+  return (
+    <div className="flex justify-center min-w-[100px]">
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={onBlur}
+        onKeyDown={onKeyDown}
+        className="w-24 text-center bg-slate-50/50 border border-slate-200 rounded px-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all text-slate-700"
+        placeholder="NF-..."
+      />
+    </div>
+  );
+}
+
 function EditableCell({ getValue, row, column: { id }, table }: EditableCellProps) {
   const initialValue = getValue() as number;
   const [value, setValue] = useState(String(initialValue));
@@ -274,6 +314,11 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
         },
       },
       {
+        accessorKey: 'notaFiscal',
+        header: () => <div className="text-center">Nota Fiscal</div>,
+        cell: (props) => <EditableTextCell {...props} />,
+      },
+      {
         accessorKey: 'qtdAtendida',
         header: () => <div className="text-center">Atendido</div>,
         cell: (props) => <EditableCell {...props} />,
@@ -289,6 +334,11 @@ export function DataTable({ data, updateDataById, onEdit, onDelete, density = 's
             </div>
           );
         },
+      },
+      { 
+        accessorKey: 'sa', 
+        header: () => <div className="text-center">SA</div>,
+        cell: (info: any) => <div className="text-center font-mono text-sm font-bold text-slate-500">{info.getValue() as string || '-'}</div>
       },
       ...(activeCategory !== 'Devolução de Hastes' ? [
         {
