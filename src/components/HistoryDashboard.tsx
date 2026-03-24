@@ -13,9 +13,18 @@ interface HistoryDashboardProps {
   sondaHistorico: SondaHistorico[];
   onClearHistory: () => void;
   onDeleteHistoryItem: (id: string, type: 'event' | 'sonda') => void;
+  isAdmin?: boolean;
 }
 
-export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico, onClearHistory, onDeleteHistoryItem }: HistoryDashboardProps) {
+export function HistoryDashboard({ 
+  activeSubgroup, 
+  data, 
+  history, 
+  sondaHistorico, 
+  onClearHistory, 
+  onDeleteHistoryItem,
+  isAdmin = false 
+}: HistoryDashboardProps) {
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
   const [localSearch, setLocalSearch] = useState('');
 
@@ -164,14 +173,16 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
               <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-[10px] font-black text-blue-400 uppercase tracking-widest">
                 Inteligência Logística
               </span>
-              <button 
-                onClick={onClearHistory}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                title="Apagar todos os registros de movimentação e logs"
-              >
-                <X className="w-3 h-3" />
-                Limpar Histórico
-              </button>
+              {isAdmin && (
+                <button 
+                  onClick={onClearHistory}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                  title="Apagar todos os registros de movimentação e logs"
+                >
+                  <X className="w-3 h-3" />
+                  Limpar Histórico
+                </button>
+              )}
             </div>
             <h2 className="text-5xl font-black text-white tracking-tight leading-tight">
               {getSubgroupTitle()}
@@ -378,13 +389,15 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
                           <span className="text-[10px] font-black text-slate-300 tracking-[0.2em] group-hover:text-slate-400 transition-colors uppercase">System Log</span>
                         </td>
                         <td className="pr-10 pl-6 py-6 text-center">
-                          <button 
-                            onClick={() => onDeleteHistoryItem(event.id, 'event')}
-                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                            title="Excluir este log"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {isAdmin && (
+                            <button 
+                              onClick={() => onDeleteHistoryItem(event.id, 'event')}
+                              className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                              title="Excluir este log"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -437,13 +450,15 @@ export function HistoryDashboard({ activeSubgroup, data, history, sondaHistorico
                         </div>
                       </td>
                       <td className="pr-10 pl-6 py-6 text-center">
-                        <button 
-                          onClick={() => onDeleteHistoryItem(log.id, 'sonda')}
-                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                          title="Excluir este registro"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isAdmin && (
+                          <button 
+                            onClick={() => onDeleteHistoryItem(log.id, 'sonda')}
+                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                            title="Excluir este registro"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

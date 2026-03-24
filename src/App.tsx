@@ -880,6 +880,7 @@ export default function App() {
                   sondaHistorico={sondaHistorico}
                   onClearHistory={handleClearHistory}
                   onDeleteHistoryItem={handleDeleteHistoryItem}
+                  isAdmin={profile?.role === 'admin'}
                 />
               )}
             </div>
