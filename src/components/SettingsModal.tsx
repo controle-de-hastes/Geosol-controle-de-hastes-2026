@@ -3,7 +3,7 @@ import {
   X, Download, Trash2, AlertTriangle, Settings as SettingsIcon, 
   User, Palette, Bell, Database, Save, Check, Monitor, Moon, Sun, History,
   RefreshCcw, Shield, PlusCircle, Search, Pencil, Edit3, FileDown, Trash, Users,
-  Eye, EyeOff, Briefcase, FileSpreadsheet, Upload, UserPlus, Plus
+  Eye, EyeOff, Briefcase, FileSpreadsheet, Upload, UserPlus, Plus, Key
 } from 'lucide-react';
 import { Order, HistoryEvent, Profile, Cliente } from '../types';
 import { supabase } from '../lib/supabase';
@@ -60,6 +60,7 @@ export function SettingsModal({
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUserName, setEditingUserName] = useState('');
   const [isDeletingUserId, setIsDeletingUserId] = useState<string | null>(null);
+  const [isResettingPasswordId, setIsResettingPasswordId] = useState<string | null>(null);
 
   // State for clientes
   const [newClienteName, setNewClienteName] = useState('');
@@ -162,6 +163,41 @@ export function SettingsModal({
       alert('Erro ao excluir perfil de usuário: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setIsDeletingUserId(null);
+    }
+  };
+  
+  const handleResetPassword = async (userId: string, userEmail: string) => {
+    if (!confirm(`Tem certeza que deseja resetar a senha de ${userEmail} para "geosol"?`)) {
+      return;
+    }
+    
+    setIsResettingPasswordId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId }
+      });
+      
+      if (error) {
+        // Log error with more details if it's a function error
+        console.error('Erro detalhado na Edge Function:', error);
+        throw error;
+      }
+      
+      alert(`Senha de ${userEmail} foi resetada para "geosol" com sucesso!`);
+    } catch (err: any) {
+      console.error('Erro ao resetar senha:', err);
+      let errorMsg = err.message || 'Erro desconhecido. Verifique se as Edge Functions estão ativas.';
+      if (err.context && typeof err.context.json === 'function') {
+        try {
+          const body = await err.context.json();
+          if (body.error) errorMsg = body.error;
+        } catch (e) {}
+      }
+      alert('Erro ao resetar senha: ' + errorMsg);
+    } finally {
+      setIsResettingPasswordId(userId === isResettingPasswordId ? null : isResettingPasswordId);
+      // Wait, let's just use:
+      setIsResettingPasswordId(null);
     }
   };
 
@@ -473,10 +509,10 @@ export function SettingsModal({
 
   const allTabs = [
     { id: 'perfil', label: 'Meu Perfil', icon: User, show: true },
-    { id: 'clientes', label: 'Controle de Clientes', icon: Briefcase, show: true },
+    { id: 'clientes', label: 'Controle de Clientes', icon: Briefcase, show: isAdmin },
     { id: 'usuarios', label: 'Gerenciar Usuários', icon: Users, show: isAdmin },
-    { id: 'dados', label: 'Dados e Backup', icon: Database, show: true },
-    { id: 'historico', label: 'Histórico', icon: History, show: true },
+    { id: 'dados', label: 'Dados e Backup', icon: Database, show: isAdmin },
+    { id: 'historico', label: 'Histórico', icon: History, show: isAdmin },
   ] as const;
 
   const visibleTabs = allTabs.filter(tab => tab.show);
@@ -602,20 +638,73 @@ export function SettingsModal({
                         </button>
                       </div>
                     </div>
-                    <div className="grid gap-2">
-                      <label className="text-sm font-medium text-slate-700">Nível de Acesso (Cargo)</label>
-                      <div className="flex items-center gap-3 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
-                        <Shield className={`w-4 h-4 ${isAdmin ? 'text-blue-600' : 'text-slate-400'}`} />
-                        {currentProfile.role}
+                    <div className="pt-6 mt-6 border-t border-slate-100 space-y-4">
+                      <h5 className="text-sm font-bold text-slate-800">Aparência</h5>
+                      
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tema</label>
+                          <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button
+                              type="button"
+                              onClick={() => onThemeChange('light')}
+                              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                                theme === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              <Sun className="w-3.5 h-3.5" /> Claro
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onThemeChange('dark')}
+                              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                                theme === 'dark' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              <Moon className="w-3.5 h-3.5" /> Escuro
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Visualização</label>
+                          <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button
+                              type="button"
+                              onClick={() => onDensityChange('standard')}
+                              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                                density === 'standard' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              Padrão
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDensityChange('compact')}
+                              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                                density === 'compact' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              Compacto
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-400">O cargo só pode ser alterado por um administrador na aba "Gerenciar Usuários".</p>
+
+                      <div className="grid gap-2 pt-4">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nível de Acesso</label>
+                        <div className="flex items-center gap-3 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
+                          <Shield className={`w-4 h-4 ${isAdmin ? 'text-blue-600' : 'text-slate-400'}`} />
+                          {currentProfile.role}
+                        </div>
+                      </div>
                     </div>
                   </form>
                 </div>
               )}
 
               {/* CONTROLE DE CLIENTES */}
-              {activeTab === 'clientes' && (
+              {activeTab === 'clientes' && isAdmin && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <div>
                     <h4 className="text-lg font-bold text-slate-800">Controle de Clientes</h4>
@@ -928,6 +1017,18 @@ export function SettingsModal({
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => handleResetPassword(user.id, user.email)}
+                                    disabled={user.id === profile?.id || isResettingPasswordId === user.id}
+                                    className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                    title="Resetar Senha para 'geosol'"
+                                  >
+                                    {isResettingPasswordId === user.id ? (
+                                      <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <Key className="w-4 h-4" />
+                                    )}
+                                  </button>
                                   <select
                                     value={user.role}
                                     onChange={(e) => updateUserRole(user.id, e.target.value as 'admin' | 'user')}
@@ -953,7 +1054,7 @@ export function SettingsModal({
 
 
 
-              {activeTab === 'dados' && (
+              {activeTab === 'dados' && isAdmin && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <div>
                     <h4 className="text-lg font-bold text-slate-800">Dados e Backup</h4>
@@ -1098,7 +1199,7 @@ export function SettingsModal({
               )}
 
               {/* HISTÓRICO DE MOVIMENTAÇÕES */}
-              {activeTab === 'historico' && (
+              {activeTab === 'historico' && isAdmin && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <div>
                     <h4 className="text-lg font-bold text-slate-800">Histórico de Movimentações</h4>
