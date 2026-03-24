@@ -316,20 +316,25 @@ export function TopBar({
               >
                 <RotateCcw className="w-4 h-4" /> Novo Pedido Devolução
               </button>
-              <button 
-                onClick={() => { onImportClick(); setIsActionsOpen(false); }} 
-                className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-              >
-                <Upload className="w-4 h-4" /> Importar Planilha
-              </button>
-              <div className="h-px bg-slate-700 my-1"></div>
-              <button 
-                onClick={() => { downloadExcelTemplate(); setIsActionsOpen(false); }} 
-                className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-                title="Baixar planilha modelo para preenchimento"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> Baixar Modelo Excel
-              </button>
+              {isAdmin && (
+                <>
+                  <div className="h-px bg-slate-700 my-1"></div>
+                  <button 
+                    onClick={() => { onImportClick(); setIsActionsOpen(false); }} 
+                    className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                  >
+                    <Upload className="w-4 h-4" /> Importar Planilha
+                  </button>
+                  <div className="h-px bg-slate-700 my-1"></div>
+                  <button 
+                    onClick={() => { downloadExcelTemplate(); setIsActionsOpen(false); }} 
+                    className="w-full text-left px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                    title="Baixar planilha modelo para preenchimento"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> Baixar Modelo Excel
+                  </button>
+                </>
+              )}
               <button 
                 onClick={() => { 
                   if (exportData && exportData.length > 0) {
