@@ -504,8 +504,12 @@ export default function App() {
       setData((prev) => [newOrder, ...prev]);
       addHistory(`Novo pedido ${newOrder.id} criado para ${newOrder.cliente}.`, 'CREATE');
 
-      // Auto-create return order for Resupply (only if the order itself is NOT a return)
-      if (newOrder.tipoPedido === 'Ressuprimento' && newOrder.categoria !== 'Devolução de Hastes') {
+      // Auto-create return order for Resupply (only if the order itself is NOT a return and NOT Revestimento)
+      if (
+        newOrder.tipoPedido === 'Ressuprimento' && 
+        newOrder.categoria !== 'Devolução de Hastes' && 
+        !newOrder.categoria.startsWith('Revestimento')
+      ) {
         const returnOrderId = `RET-${Math.floor(Math.random() * 10000)}`;
         const returnOrder: Order = {
           ...newOrder,
