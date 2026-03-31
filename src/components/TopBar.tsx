@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, ReactNode } from 'react';
 import { Category, Profile, ViewMode, HistorySubgroup } from '../types';
-import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield, FileSpreadsheet, RotateCcw } from 'lucide-react';
+import { Layers, BarChart3, Settings, Search, Plus, Upload, Download, ChevronDown, X, User, LogOut, Shield, FileSpreadsheet, RotateCcw, Activity } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { supabase } from '../lib/supabase';
 import { downloadExcelTemplate, exportOrdersToExcel } from '../lib/excelUtils';
@@ -44,11 +44,13 @@ export function TopBar({
   const [isHastesOpen, setIsHastesOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDisonOpen, setIsDisonOpen] = useState(false);
   
   const actionsRef = useRef<HTMLDivElement>(null);
   const hastesRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const disonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -63,6 +65,9 @@ export function TopBar({
       }
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
+      }
+      if (disonRef.current && !disonRef.current.contains(event.target as Node)) {
+        setIsDisonOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -255,6 +260,36 @@ export function TopBar({
                 }`}
               >
                 Log de Eventos
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* DISON 4.0 Dropdown */}
+        <div className="relative" ref={disonRef}>
+          <button
+            onClick={() => setIsDisonOpen(!isDisonOpen)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              isDisonOpen
+                ? 'bg-blue-600/10 text-blue-400'
+                : 'hover:bg-slate-800 hover:text-white text-slate-400'
+            }`}
+          >
+            <Activity className="w-4 h-4 shrink-0" />
+            <span>DISON 4.0</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDisonOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isDisonOpen && (
+            <div className="absolute left-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2">
+              <button
+                onClick={() => {
+                  window.open('https://app.powerbi.com/groups/77fe9d4e-4522-4441-8f88-1e13936b5cb0/reports/c10995a6-4ee7-4379-beca-8b5391ea39c5/ReportSection1b4fd96d4a520a338101?language=pt-BR&experience=power-bi', '_blank');
+                  setIsDisonOpen(false);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm font-medium transition-colors text-slate-300 hover:bg-slate-700 hover:text-white"
+              >
+                Power BI
               </button>
             </div>
           )}
